@@ -117,7 +117,8 @@ export function CalendarScreen({ selected, onSelect, onEdit, onAdd }: Props) {
                 key={d}
                 type="button"
                 className={`cal-cell ${d === selected ? 'selected' : ''} ${d === today ? 'today' : ''} ${d > today ? 'future' : ''}`}
-                onClick={() => onSelect(d)}
+                // 選んでいる日をもう一度タップすると、その日の記録を始める
+                onClick={() => (d === selected ? onAdd(d) : onSelect(d))}
                 aria-label={`${formatMd(d)} 収入 ${yen(t?.income ?? 0)} 支出 ${yen(t?.expense ?? 0)}`}
               >
                 <span className="cal-day">{label}</span>
@@ -142,6 +143,7 @@ export function CalendarScreen({ selected, onSelect, onEdit, onAdd }: Props) {
         <button type="button" className="btn btn-ghost btn-block" onClick={() => onAdd(selected)}>
           ＋ この日に記録する
         </button>
+        <p className="muted small center">カレンダーで選んでいる日をもう一度タップしても記録できます</p>
       </section>
 
       <section className="card">
