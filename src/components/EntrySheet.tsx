@@ -41,8 +41,8 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
   // カテゴリに振込日が決めてあれば、そのカテゴリを選んだときに入れる
   const entryCat = entry ? categories.find((c) => c.id === entry.categoryId) : undefined;
   const [deferred, setDeferred] = useState(!!entry?.payDate);
-  const [payDay, setPayDay] = useState(entry?.payDate ? Number(entry.payDate.slice(8)) : 25);
-  const [payClose, setPayClose] = useState<number | undefined>(entryCat?.payCloseDay);
+  const [payDay, setPayDay] = useState(entry?.payDate ? Number(entry.payDate.slice(8)) : (settings.defaultPayDay ?? 25));
+  const [payClose, setPayClose] = useState<number | undefined>(entry?.payDate ? entryCat?.payCloseDay : settings.defaultPayCloseDay);
   const payDate = nextMonthPayDate(date, payDay, payClose);
   const applyPayRule = (id: string, cats = categories) => {
     const c = cats.find((x) => x.id === id);
@@ -54,7 +54,8 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
     } else if (categories.find((x) => x.id === categoryId)?.payDay) {
       // 振込日のあるカテゴリから、ないカテゴリに変えたときだけ戻す（自分で選んだ「翌月に振込」は残す）
       setDeferred(false);
-      setPayClose(undefined);
+      setPayDay(settings.defaultPayDay ?? 25);
+      setPayClose(settings.defaultPayCloseDay);
     }
   };
   const [error, setError] = useState('');
@@ -205,7 +206,16 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
               <button type="button" role="radio" aria-checked={!deferred} className={`pick ${!deferred ? 'active' : ''}`} onClick={() => setDeferred(false)}>
                 この日に入る
               </button>
-              <button type="button" role="radio" aria-checked={deferred} className={`pick ${deferred ? 'active' : ''}`} onClick={() => setDeferred(true)}>
+              <button type="button" role="radio" aria-checked={deferred} className={`pick ${deferred ? 'active' : ''}`}
+                onClick={() => {
+                  // カテゴリに振込日がなければ、設定のいつもの日から
+                  if (!deferred && !categories.find((c) => c.id === categoryId)?.payDay) {
+                    setPayDay(settings.defaultPayDay ?? 25);
+                    setPayClose(settings.defaultPayCloseDay);
+                  }
+                  setDeferred(true);
+                }}
+              >
                 翌月に振込（給料など）
               </button>
             </div>

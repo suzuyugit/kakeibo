@@ -3,6 +3,7 @@ import type { Category, EntryType } from '../db/types';
 import { TRAVEL_CATEGORY } from '../db/db';
 import { addCategory, deleteCategory, updateCategory } from '../db/categoryRepo';
 import { Sheet } from './Sheet';
+import { useSettings } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
 import { closingMonth, nextMonthPayDate } from '../lib/card';
 import { addMonths, dateFor } from '../lib/recurring';
@@ -36,8 +37,9 @@ export function CategorySheet({ type, category, onClose, onSaved }: Props) {
   const [hidden, setHidden] = useState(!!category?.hidden);
   // 収入：翌月の決めた日に振り込まれるか（バイト先ごとに違う給料日など）
   const [deferred, setDeferred] = useState(!!category?.payDay);
-  const [payDay, setPayDay] = useState(category?.payDay ?? 25);
-  const [payClose, setPayClose] = useState(category?.payCloseDay ?? 0);
+  const settings = useSettings();
+  const [payDay, setPayDay] = useState(category?.payDay ?? settings.defaultPayDay ?? 25);
+  const [payClose, setPayClose] = useState(category?.payCloseDay ?? settings.defaultPayCloseDay ?? 0);
   const [error, setError] = useState('');
   const travel = category?.id === TRAVEL_CATEGORY;
 
@@ -103,7 +105,16 @@ export function CategorySheet({ type, category, onClose, onSaved }: Props) {
               <button type="button" role="radio" aria-checked={!deferred} className={`pick ${!deferred ? 'active' : ''}`} onClick={() => setDeferred(false)}>
                 記録した日に入る
               </button>
-              <button type="button" role="radio" aria-checked={deferred} className={`pick ${deferred ? 'active' : ''}`} onClick={() => setDeferred(true)}>
+              <button type="button" role="radio" aria-checked={deferred} className={`pick ${deferred ? 'active' : ''}`}
+                onClick={() => {
+                  // まだ振込日を決めていないカテゴリなら、設定のいつもの日から
+                  if (!deferred && !category?.payDay) {
+                    setPayDay(settings.defaultPayDay ?? 25);
+                    setPayClose(settings.defaultPayCloseDay ?? 0);
+                  }
+                  setDeferred(true);
+                }}
+              >
                 翌月に振込
               </button>
             </div>

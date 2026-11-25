@@ -52,6 +52,36 @@ export function SettingsScreen() {
       <BudgetSection />
 
       <section className="card">
+        <h3 className="card-title">💴 給料の振込（いつもの日）</h3>
+        <div className="pay-row">
+          <select
+            value={settings.defaultPayCloseDay ?? 0}
+            onChange={(e) => void updateSettings({ defaultPayCloseDay: Number(e.target.value) || undefined })}
+            aria-label="いつもの締め日"
+          >
+            <option value={0}>月末締め</option>
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>
+                {d}日締め
+              </option>
+            ))}
+          </select>
+          <span>翌月</span>
+          <select value={settings.defaultPayDay ?? 25} onChange={(e) => void updateSettings({ defaultPayDay: Number(e.target.value) })} aria-label="いつもの振込日">
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>
+                {d}日
+              </option>
+            ))}
+          </select>
+          <span>払い</span>
+        </div>
+        <p className="muted small">
+          収入を「翌月に振込」にしたとき、最初にこの日が入ります。バイト先ごとに違う日は、収入カテゴリの編集で決められます（そちらが優先）。
+        </p>
+      </section>
+
+      <section className="card">
         <h3 className="card-title">💳 カードの引き落とし</h3>
         <label className="field">
           <span className="label">締め日</span>
