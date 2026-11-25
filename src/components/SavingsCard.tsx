@@ -64,7 +64,7 @@ export function SavingsCard({ settings, rows }: { settings: Settings; rows: Row[
       )}
       {editing && (
         <Sheet title="今の貯金を入力し直す" onClose={() => setEditing(false)}>
-          <SavingsForm initialAmount={s.total} autoFocus onSaved={() => setEditing(false)} />
+          <SavingsForm initialAmount={s.total} onSaved={() => setEditing(false)} />
         </Sheet>
       )}
     </section>

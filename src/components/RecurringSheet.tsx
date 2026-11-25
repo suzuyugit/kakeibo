@@ -5,7 +5,8 @@ import { saveRecurring, stopRecurring } from '../db/recurringRepo';
 import { useCategories } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
 import { PAYMENT_LABEL, PAYMENT_METHODS, payKind } from '../lib/labels';
-import { parseYen, yen } from '../lib/money';
+import { yen } from '../lib/money';
+import { AmountInput } from './AmountInput';
 import { addMonths, countOccurrences, dateFor, firstMonthOnOrAfter, lastMonthOnOrBefore, monthOf, upcomingMonth } from '../lib/recurring';
 import { formatMd } from '../lib/date';
 import { Sheet } from './Sheet';
@@ -19,7 +20,7 @@ export function RecurringSheet({ recurring, onClose }: Props) {
   const categories = useCategories();
   const [type, setType] = useState<EntryType>(recurring?.type ?? 'expense');
   const [name, setName] = useState(recurring?.name ?? '');
-  const [amount, setAmount] = useState(recurring ? String(recurring.amount) : '');
+  const [amountNum, setAmountNum] = useState<number | undefined>(recurring?.amount);
   const [day, setDay] = useState(recurring?.dayOfMonth ?? 25);
   const [categoryId, setCategoryId] = useState(recurring?.categoryId ?? '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(payKind(recurring?.paymentMethod));
@@ -36,8 +37,7 @@ export function RecurringSheet({ recurring, onClose }: Props) {
   const picks = forPicker(categories, type);
   const current = categories.find((c) => c.id === categoryId);
   if (current && current.type === type && !picks.includes(current)) picks.unshift(current);
-  const amountNum = parseYen(amount);
-  const amountChanged = recurring && amountNum !== undefined && !Number.isNaN(amountNum) && amountNum !== recurring.amount;
+  const amountChanged = recurring && amountNum !== undefined && amountNum !== recurring.amount;
   // 今ある固定は今日の分がもう入っているので、次の回は明日以降
   const firstMonth = started ? upcomingMonth(day, today) : firstMonthOnOrAfter(startDate, day);
     const nextDate = dateFor(firstMonth, day);
@@ -49,7 +49,7 @@ export function RecurringSheet({ recurring, onClose }: Props) {
 
   const save = async () => {
     if (!name.trim()) return setError('名前を入れてください（例：バイト代、家賃）');
-    if (amountNum === undefined || Number.isNaN(amountNum) || amountNum <= 0) return setError('金額を入れてください');
+    if (amountNum === undefined || amountNum <= 0) return setError('金額を入れてください');
     if (!categoryId) return setError('カテゴリを選んでください');
     if (!forever && !endDate) return setError('終わりの日を選ぶか、「ずっと」にしてください');
     if (count === 0) return setError('始まりから終わりまでの間に、一度も入る日がありません');
@@ -127,10 +127,7 @@ export function RecurringSheet({ recurring, onClose }: Props) {
             ))}
           </select>
           <span>に</span>
-          <label className={`amount-field small-amount ${type}`}>
-            <span className="yen">¥</span>
-            <input className="amount-input" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" aria-label="金額" />
-          </label>
+          <AmountInput value={amountNum} onChange={setAmountNum} label="金額" type={type} className="small-amount" />
         </div>
         {type === 'income' && (
           <div className="field">

@@ -3,35 +3,11 @@ import type { Category } from '../db/types';
 import { db, updateSettings } from '../db/db';
 import { forSettings } from '../db/categoryRepo';
 import { useCategories, useSettings } from '../hooks/useData';
-import { parseYen } from '../lib/money';
+import { AmountInput } from './AmountInput';
 
-/** 金額の欄。フォーカスが外れたら保存。空にすると予算なし */
+/** 予算の欄。タップで計算式も使えるキーボード。空にすると予算なし */
 function BudgetInput({ value, onSave, label }: { value?: number; onSave: (v: number | undefined) => void; label: string }) {
-  const [text, setText] = useState(value !== undefined ? value.toLocaleString('ja-JP') : '');
-  const commit = () => {
-    const n = parseYen(text);
-    if (n !== undefined && Number.isNaN(n)) {
-      setText(value !== undefined ? value.toLocaleString('ja-JP') : '');
-      return;
-    }
-    if (n !== value) onSave(n);
-    setText(n !== undefined ? n.toLocaleString('ja-JP') : '');
-  };
-  return (
-    <label className="budget-input">
-      <input
-        inputMode="numeric"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onFocus={(e) => setText(e.target.value.replace(/,/g, ''))}
-        onBlur={commit}
-        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        placeholder="なし"
-        aria-label={label}
-      />
-      <span>円</span>
-    </label>
-  );
+  return <AmountInput value={value} onChange={(v) => v !== value && onSave(v)} label={label} allowEmpty placeholder="なし" className="budget-amount" />;
 }
 
 export function BudgetSection() {

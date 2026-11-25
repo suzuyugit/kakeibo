@@ -1,25 +1,25 @@
 import { useState } from 'react';
 import { updateSettings } from '../db/db';
 import { formatMd, todayYmd } from '../lib/date';
-import { parseYen, yen } from '../lib/money';
+import { yen } from '../lib/money';
+import { AmountInput } from './AmountInput';
 import { showToast } from './Toast';
 
 type Props = {
   initialAmount?: number;
   onSaved?: () => void;
-  autoFocus?: boolean;
 };
 
 /** 今の貯金を入れる欄。入れた日の記録までは口座に反映済みとして扱う */
-export function SavingsForm({ initialAmount, onSaved, autoFocus }: Props) {
-  const [amount, setAmount] = useState(initialAmount !== undefined ? String(initialAmount) : '');
+export function SavingsForm({ initialAmount, onSaved }: Props) {
+  const [amount, setAmount] = useState<number | undefined>(initialAmount);
   const [asOf, setAsOf] = useState(todayYmd());
   const [error, setError] = useState('');
   const today = todayYmd();
 
   const save = async () => {
-    const n = parseYen(amount);
-    if (n === undefined || Number.isNaN(n)) return setError('金額を数字で入れてください');
+    const n = amount;
+    if (n === undefined) return setError('金額を入れてください');
     await updateSettings({ savingsAmount: n, savingsAsOf: asOf, savingsSetAt: new Date().toISOString() });
     showToast(`今の貯金を ${yen(n)} にしました`);
     onSaved?.();
@@ -33,21 +33,15 @@ export function SavingsForm({ initialAmount, onSaved, autoFocus }: Props) {
         </p>
       )}
       <div className="savings-input-row">
-        <label className="amount-field">
-          <span className="yen">¥</span>
-          <input
-            className="amount-input"
-            inputMode="numeric"
-            value={amount}
-            onChange={(e) => {
-              setAmount(e.target.value);
-              setError('');
-            }}
-            placeholder="0"
-            autoFocus={autoFocus}
-            aria-label="今の貯金"
-          />
-        </label>
+        <AmountInput
+          value={amount}
+          onChange={(v) => {
+            setAmount(v);
+            setError('');
+          }}
+          label="今の貯金"
+          className="big-amount"
+        />
       </div>
       <label className="field field-inline">
         <span className="label">いつの額？</span>

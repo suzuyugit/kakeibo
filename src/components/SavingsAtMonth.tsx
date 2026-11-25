@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { SavingsChart } from './SavingsChart';
 import { breakdownAt, type ForecastInput } from '../lib/forecast';
 import { monthEnds } from '../lib/chartData';
-import { parseYen, signedYen, yen } from '../lib/money';
+import { signedYen, yen } from '../lib/money';
+import { AmountInput } from './AmountInput';
 import { addMonths, monthOf } from '../lib/recurring';
 
 type Props = {
@@ -59,7 +60,6 @@ function MonthlyField(props: {
   onReset: () => void;
 }) {
   const { label, value, withFixed, fixed, fixedLabel, note, changed, onChange, onMode, onReset } = props;
-  const [text, setText] = useState<string | null>(null);
   return (
     <div className="spend-field">
       <span className="label">{label}</span>
@@ -67,27 +67,7 @@ function MonthlyField(props: {
         <button type="button" className="icon-btn" onClick={() => onChange(Math.max(0, value - 10000))} aria-label={`${label}を1万円へらす`}>
           −1万
         </button>
-        <label className="spend-input">
-          <input
-            inputMode="numeric"
-            value={text ?? value.toLocaleString('ja-JP')}
-            onChange={(e) => setText(e.target.value)}
-            onFocus={(e) => {
-              // カンマを外して全部選ぶ（打つと置き換わる）
-              const el = e.currentTarget;
-              setText(String(value));
-              requestAnimationFrame(() => el.select());
-            }}
-            onBlur={() => {
-              const n = parseYen(text ?? '');
-              setText(null);
-              if (n !== undefined && !Number.isNaN(n)) onChange(n);
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-            aria-label={label}
-          />
-          <span>円</span>
-        </label>
+        <AmountInput value={value} onChange={(v) => onChange(v ?? 0)} label={label} className="spend-amount" />
         <button type="button" className="icon-btn" onClick={() => onChange(value + 10000)} aria-label={`${label}を1万円ふやす`}>
           +1万
         </button>

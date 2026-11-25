@@ -3722,3 +3722,55 @@ button.card.trip-card {
 .budget-mode {
   margin-bottom: 8px;
 }
+
+/* 金額の欄（タップで計算式も使えるキーボード） */
+.amount-input-btn {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.amount-input-btn .yen {
+  margin-right: auto;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.amount-input-btn .placeholder {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.amount-input-btn.big-amount {
+  width: 100%;
+  min-height: 64px;
+  font-size: 30px;
+  border: 2px solid var(--primary);
+}
+
+.amount-input-btn.small-amount {
+  flex: 1;
+  min-width: 140px;
+  font-size: 22px;
+  border: 2px solid var(--primary);
+}
+
+.amount-input-btn.budget-amount {
+  width: 140px;
+}
+
+.amount-input-btn.spend-amount {
+  flex: 1;
+  font-size: 20px;
+}
