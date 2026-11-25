@@ -37,8 +37,3 @@ export function useRoute(): Route {
   }, []);
   return route;
 }
-
-/** たびメモのその旅行のお金タブ（同じサイトの /tabi-app/） */
-export function tabimemoMoneyUrl(tripId: string): string {
-  return `${new URL('../tabi-app/', location.href.split('#')[0]).href}#/trip/${encodeURIComponent(tripId)}/money`;
-}

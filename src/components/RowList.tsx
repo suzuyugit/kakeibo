@@ -3,7 +3,8 @@ import type { Row } from '../lib/aggregate';
 import { deleteEntry, restoreEntry } from '../db/entryRepo';
 import { formatMd } from '../lib/date';
 import { yen } from '../lib/money';
-import { tabimemoMoneyUrl } from '../router';
+import { useState } from 'react';
+import { TripEntrySheet } from './TripEntrySheet';
 import { SwipeToDelete } from './SwipeToDelete';
 import { showToast } from './Toast';
 
@@ -14,9 +15,11 @@ type Props = {
   showDate?: boolean;
 };
 
-/** 記録の一覧。タップで編集、左にスライドで削除（元に戻せる）。旅行の支出はたびメモを開く */
+/** 記録の一覧。タップで編集、左にスライドで削除（元に戻せる）。旅行の支出はタップで詳しく見る（直すのはたびメモ） */
 export function RowList({ rows, onEdit, showDate }: Props) {
+  const [tripRow, setTripRow] = useState<Row | null>(null);
   return (
+    <>
     <ul className="expense-list">
       {rows.map((r) => {
         const body = (
@@ -29,7 +32,7 @@ export function RowList({ rows, onEdit, showDate }: Props) {
               </span>
               {(showDate || r.sub || r.trip) && (
                 <span className="expense-sub">
-                  {[showDate ? formatMd(r.date) : '', r.sub ?? '', r.trip ? 'たびメモで開く ›' : ''].filter(Boolean).join('・')}
+                  {[showDate ? formatMd(r.date) : '', r.sub ?? '', r.trip ? 'たびメモから' : ''].filter(Boolean).join('・')}
                 </span>
               )}
             </span>
@@ -42,9 +45,9 @@ export function RowList({ rows, onEdit, showDate }: Props) {
         if (r.trip) {
           return (
             <li key={r.key}>
-              <a className="expense-row" href={tabimemoMoneyUrl(r.trip.tripId)}>
+              <button type="button" className="expense-row" onClick={() => setTripRow(r)}>
                 {body}
-              </a>
+              </button>
             </li>
           );
         }
@@ -66,5 +69,7 @@ export function RowList({ rows, onEdit, showDate }: Props) {
         );
       })}
     </ul>
+    {tripRow && <TripEntrySheet row={tripRow} onClose={() => setTripRow(null)} />}
+    </>
   );
 }

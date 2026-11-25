@@ -12,7 +12,7 @@ import { budgetStatus } from '../lib/budget';
 import { dayCount, formatMd, todayYmd } from '../lib/date';
 import { yen, signedYen } from '../lib/money';
 import { periodLabel, periodOf } from '../lib/period';
-import { navigate, tabimemoMoneyUrl } from '../router';
+import { navigate } from '../router';
 
 type Props = { onEdit: (e: Entry) => void };
 
@@ -101,7 +101,7 @@ export function HomeScreen({ onEdit }: Props) {
       {settings.savingsAmount !== undefined && <SavingsCard settings={settings} rows={rows} />}
 
       {next && (
-        <a className="card trip-card" href={tabimemoMoneyUrl(next.tripId)}>
+        <button type="button" className="card trip-card" onClick={() => navigate({ name: 'savings' })}>
           <div className="settle-head">
             <h3 className="card-title">✈️ {next.name}</h3>
             <b className="trip-days">{next.startDate > today ? `あと${dayCount(today, next.startDate) - 1}日` : '旅行中'}</b>
@@ -127,8 +127,8 @@ export function HomeScreen({ onEdit }: Props) {
               </div>
             </div>
           )}
-          <div className="muted small trip-link">たびメモで開く ›</div>
-        </a>
+          <div className="muted small trip-link">貯金の見込みを見る ›</div>
+        </button>
       )}
 
       <section className="card">

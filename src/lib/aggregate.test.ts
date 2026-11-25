@@ -29,7 +29,7 @@ describe('集計', () => {
       ['2026-11-25', '食費'],
       ['2026-11-25', 'バイト代'],
     ]);
-    expect(rows.find((r) => r.trip)).toMatchObject({ icon: '✈️', amount: 3000, trip: { tripId: 't', name: 'ソウル', categoryName: '交通' } });
+    expect(rows.find((r) => r.trip)).toMatchObject({ icon: '✈️', amount: 3000, trip: { tripId: 't', name: 'ソウル', categoryName: '交通', paymentMethod: 'card' } });
     expect(rows.find((r) => r.key === 'b')!.fixed).toBe(true);
   });
 

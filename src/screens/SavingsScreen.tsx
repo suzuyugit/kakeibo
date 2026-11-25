@@ -7,7 +7,7 @@ import { useForecast } from '../hooks/useForecast';
 import { yen } from '../lib/money';
 import { pastSeries } from '../lib/forecast';
 import { countsTowardSavings } from '../lib/savings';
-import { navigate, tabimemoMoneyUrl } from '../router';
+import { navigate } from '../router';
 
 export function SavingsScreen() {
   const settings = useSettings();
@@ -39,9 +39,7 @@ export function SavingsScreen() {
           <section key={f.trip.tripId} className="card">
             <div className="settle-head">
               <h3 className="card-title">✈️ {f.trip.name}</h3>
-              <a className="trip-days" href={tabimemoMoneyUrl(f.trip.tripId)}>
-                {f.ongoing ? '旅行中' : `あと${f.daysLeft}日`} ›
-              </a>
+              <b className="trip-days">{f.ongoing ? '旅行中' : `あと${f.daysLeft}日`}</b>
             </div>
             <TripForecastBody f={f} />
           </section>

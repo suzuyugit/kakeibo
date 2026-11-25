@@ -3181,3 +3181,43 @@ a.trip-days {
   border-top-style: dashed;
   margin-left: 8px;
 }
+
+/* 旅行の支出の詳しい内容 */
+button.card.trip-card {
+  display: block;
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.trip-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trip-entry-icon {
+  font-size: 32px;
+}
+
+.trip-entry-cat {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.trip-entry-amount {
+  margin-left: auto;
+  font-size: 22px;
+}
+
+.trip-entry-memo {
+  margin: 0;
+}
+
+.trip-entry-trip {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}

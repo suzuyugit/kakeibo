@@ -13,7 +13,7 @@ export type Row = {
   title: string;
   sub?: string;
   entry?: Entry; // 家計簿の記録（編集できる）
-  trip?: { tripId: string; name: string; categoryName: string; categoryIcon: string }; // 旅行の支出（たびメモで直す）
+  trip?: { tripId: string; name: string; categoryName: string; categoryIcon: string; paymentMethod?: LedgerEntry['paymentMethod'] }; // 旅行の支出（たびメモで直す）
   fixed?: boolean; // 固定から自動で入った
 };
 
@@ -44,7 +44,7 @@ export function toRows(entries: Entry[], tripEntries: LedgerEntry[], trips: Ledg
       icon: '✈️',
       title: `${name}・${t.categoryName}`,
       sub: t.memo,
-      trip: { tripId: t.tripId, name, categoryName: t.categoryName, categoryIcon: t.categoryIcon },
+      trip: { tripId: t.tripId, name, categoryName: t.categoryName, categoryIcon: t.categoryIcon, paymentMethod: t.paymentMethod },
     });
   }
   // 新しい日が上。同じ日は記録した順（新しいものが上）
