@@ -13,7 +13,7 @@ beforeEach(async () => {
 
 describe('固定の自動入力', () => {
   it('月に1回だけ入り、開かなかった月の分はまとめて入る', async () => {
-    await saveRecurring(input, undefined, '2026-09-01'); // 9月から
+    await saveRecurring({ ...input, startDate: '2026-09-01' }, undefined, '2026-09-01'); // 9月から
     expect(await db.entries.count()).toBe(0);
     expect(await applyRecurring('2026-09-27')).toBe(1);
     expect(await applyRecurring('2026-09-28')).toBe(0); // 同じ月に2回は入らない
@@ -22,7 +22,7 @@ describe('固定の自動入力', () => {
   });
 
   it('自動で入った記録を直しても消しても、その月は作り直さない', async () => {
-    await saveRecurring(input, undefined, '2026-11-01');
+    await saveRecurring({ ...input, startDate: '2026-11-01' }, undefined, '2026-11-01');
     await applyRecurring('2026-11-27');
     const [e] = await db.entries.toArray();
     await saveEntry({ type: 'expense', date: e.date, amount: 7600, categoryId: e.categoryId }, e.id);
@@ -34,10 +34,10 @@ describe('固定の自動入力', () => {
   });
 
   it('金額を変えると次の回から。止めるとそのあとは入らない', async () => {
-    await saveRecurring(input, undefined, '2026-10-01');
+    await saveRecurring({ ...input, startDate: '2026-10-01' }, undefined, '2026-10-01');
     await applyRecurring('2026-11-28');
     const [r] = await db.recurrings.toArray();
-    await saveRecurring({ ...input, amount: 9000 }, r, '2026-11-28');
+    await saveRecurring({ ...{ ...input, amount: 9000 }, startDate: '2026-11-28' }, r, '2026-11-28');
     await applyRecurring('2027-01-27');
     expect((await db.entries.orderBy('date').toArray()).map((e) => [e.date, e.amount])).toEqual([
       ['2026-10-27', 8000],

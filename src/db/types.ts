@@ -39,7 +39,9 @@ export type Recurring = {
   dayOfMonth: number; // 1〜31。ない日はその月の最終日
   paymentMethod?: PaymentMethod;
   startMonth: string; // YYYY-MM
-  endMonth?: string; // 止めた・金額を変えたとき（この月まで）
+  endMonth?: string; // 止めた・金額を変えた・終わりの日を決めたとき（この月まで）
+  startDate?: string; // 画面で選んだ始まりの日（YYYY-MM-DD）。表示用
+  endDate?: string; // 画面で選んだ終わりの日。なければずっと
   skippedMonths: string[]; // 自動で入った記録を消した月
   /** 収入のとき、どの月の分か。'prev' = 前の月の分（バイト代の翌月払いなど）。なければその月の分 */
   payFor?: 'same' | 'prev';

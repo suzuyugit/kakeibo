@@ -6,7 +6,8 @@ import { useCategories } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
 import { PAYMENT_LABEL, PAYMENT_METHODS } from '../lib/labels';
 import { parseYen, yen } from '../lib/money';
-import { addMonths, dateFor, nextMonthFrom, upcomingMonth } from '../lib/recurring';
+import { addMonths, countOccurrences, dateFor, firstMonthOnOrAfter, lastMonthOnOrBefore, monthOf, upcomingMonth } from '../lib/recurring';
+import { formatMd } from '../lib/date';
 import { Sheet } from './Sheet';
 import { CategorySheet } from './CategorySheet';
 import { showToast } from './Toast';
@@ -26,19 +27,32 @@ export function RecurringSheet({ recurring, onClose }: Props) {
   const [error, setError] = useState('');
   const [addingCat, setAddingCat] = useState(false);
   const today = todayYmd();
+  // 期間：この日から、この日まで（なければずっと）
+  const [startDate, setStartDate] = useState(recurring ? (recurring.startDate ?? dateFor(recurring.startMonth, recurring.dayOfMonth)) : today);
+  const [forever, setForever] = useState(!recurring?.endMonth);
+  const [endDate, setEndDate] = useState(recurring?.endDate ?? (recurring?.endMonth ? dateFor(recurring.endMonth, recurring.dayOfMonth) : ''));
+  // もう一度でも入ったものは、始まりの日は変えられない
+  const started = !!recurring && recurring.startMonth < upcomingMonth(recurring.dayOfMonth, today);
   const picks = forPicker(categories, type);
   const current = categories.find((c) => c.id === categoryId);
   if (current && current.type === type && !picks.includes(current)) picks.unshift(current);
   const amountNum = parseYen(amount);
   const amountChanged = recurring && amountNum !== undefined && !Number.isNaN(amountNum) && amountNum !== recurring.amount;
   // 今ある固定は今日の分がもう入っているので、次の回は明日以降
-  const nextMonth = recurring ? upcomingMonth(day, today) : nextMonthFrom(day, today);
-  const nextDate = dateFor(nextMonth, day);
+  const firstMonth = started ? upcomingMonth(day, today) : firstMonthOnOrAfter(startDate, day);
+    const nextDate = dateFor(firstMonth, day);
+  const lastMonth = !forever && endDate ? lastMonthOnOrBefore(endDate, day) : undefined;
+  const count = countOccurrences(firstMonth, lastMonth);
+  // 過去の日から始めると、今日までの分がまとめて記録される
+  const pastCount = !started && nextDate <= today ? (countOccurrences(firstMonth, lastMonth && lastMonth < monthOf(today) ? lastMonth : (dateFor(monthOf(today), day) <= today ? monthOf(today) : addMonths(monthOf(today), -1))) ?? 0) : 0;
+  const md = (ymd: string) => `${ymd.slice(0, 4) !== today.slice(0, 4) ? `${ymd.slice(0, 4)}/` : ''}${formatMd(ymd)}`;
 
   const save = async () => {
     if (!name.trim()) return setError('名前を入れてください（例：バイト代、家賃）');
     if (amountNum === undefined || Number.isNaN(amountNum) || amountNum <= 0) return setError('金額を入れてください');
     if (!categoryId) return setError('カテゴリを選んでください');
+    if (!forever && !endDate) return setError('終わりの日を選ぶか、「ずっと」にしてください');
+    if (count === 0) return setError('始まりから終わりまでの間に、一度も入る日がありません');
     await saveRecurring(
       {
         type,
@@ -49,6 +63,8 @@ export function RecurringSheet({ recurring, onClose }: Props) {
         // 切り替えたときに前の値が残らないよう、使わないほうは undefined で上書きする
         paymentMethod: type === 'expense' ? paymentMethod : undefined,
         payFor: type === 'income' && payFor === 'prev' ? 'prev' : undefined,
+        startDate,
+        endDate: forever ? undefined : endDate,
       },
       recurring,
       today,
@@ -129,16 +145,55 @@ export function RecurringSheet({ recurring, onClose }: Props) {
             </div>
             {payFor === 'prev' && (
               <p className="muted small">
-                例：{Number(addMonths(nextMonth, -1).slice(5))}月に働いた分が {Number(nextMonth.slice(5))}/{Number(nextDate.slice(8))} に入ります。記録には「{name.trim() || 'バイト代'}（{Number(addMonths(nextMonth, -1).slice(5))}月分）」と書きます。
+                例：{Number(addMonths(firstMonth, -1).slice(5))}月に働いた分が {Number(firstMonth.slice(5))}/{Number(nextDate.slice(8))} に入ります。記録には「{name.trim() || 'バイト代'}（{Number(addMonths(firstMonth, -1).slice(5))}月分）」と書きます。
               </p>
             )}
           </div>
         )}
         {day >= 29 && <p className="muted small">{day}日がない月は、その月の最終日に入ります。</p>}
+        <div className="field">
+          <span className="label">期間</span>
+          <div className="period-row">
+            <label className="period-field">
+              <span className="muted small">から</span>
+              <input type="date" value={startDate} disabled={started} onChange={(e) => e.target.value && setStartDate(e.target.value)} aria-label="始まりの日" />
+            </label>
+            <span className="period-sep">〜</span>
+            <div className="period-field">
+              <span className="muted small">まで</span>
+              {forever ? (
+                <button
+                  type="button"
+                  className="pick"
+                  onClick={() => {
+                    setForever(false);
+                    if (!endDate) setEndDate(dateFor(addMonths(firstMonth, 11), day));
+                  }}
+                >
+                  ずっと ▾
+                </button>
+              ) : (
+                <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} aria-label="終わりの日" />
+              )}
+            </div>
+          </div>
+          {!forever && (
+            <button type="button" className="btn-text small period-forever" onClick={() => setForever(true)}>
+              終わりを決めない（ずっと）にする
+            </button>
+          )}
+          {started && <p className="muted small">もう記録が入っているので、始まりの日は変えられません。</p>}
+        </div>
+
         {amountChanged ? (
-          <p className="notice small">金額は次の回（{nextDate.slice(5).replace('-', '/')}）から {yen(amountNum!)} になります。もう入った記録は変わりません。</p>
+          <p className="notice small">金額は次の回（{md(dateFor(upcomingMonth(day, today), day))}）から {yen(amountNum!)} になります。もう入った記録は変わりません。</p>
         ) : (
-          !recurring && <p className="muted small">最初は {nextDate.slice(5).replace('-', '/')} に入ります。</p>
+          <p className="muted small">
+            {count === 0
+              ? 'この期間には一度も入りません。'
+              : `${started ? '次は' : '最初は'} ${md(nextDate)}${lastMonth ? `、最後は ${md(dateFor(lastMonth, day))}（全${count}回）` : '。ずっと続きます'}。`}
+            {pastCount > 0 && ` 今日までの${pastCount}回分は、保存するとまとめて記録されます。`}
+          </p>
         )}
 
         <div className="field">

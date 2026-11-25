@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recurring } from '../db/types';
-import { addMonths, dateFor, dueEntries, isActive, nextMonthFrom, planSave, planStop } from './recurring';
+import { addMonths, countOccurrences, dateFor, dueEntries, firstMonthOnOrAfter, isActive, lastMonthOnOrBefore, nextMonthFrom, planSave, planStop } from './recurring';
 
 const r = (extra: Partial<Recurring> = {}): Recurring => ({
   id: 'r', type: 'income', name: 'バイト代', amount: 50000, categoryId: 'in-01-salary', dayOfMonth: 25, startMonth: '2026-09', skippedMonths: [], ...extra,
@@ -53,11 +53,11 @@ describe('自動で入る記録', () => {
 describe('保存・金額を変える・止める', () => {
   let n = 0;
   const id = () => `new${++n}`;
-  const input = { type: 'income' as const, name: 'バイト代', amount: 60000, categoryId: 'in-01-salary', dayOfMonth: 25 };
+  const input = { type: 'income' as const, name: 'バイト代', amount: 60000, categoryId: 'in-01-salary', dayOfMonth: 25, startDate: '2026-11-26' };
 
   it('新しく作ると次に入る月から', () => {
     expect(planSave(input, undefined, '2026-11-26', id).add).toMatchObject({ startMonth: '2026-12', amount: 60000 });
-    expect(planSave(input, undefined, '2026-11-25', id).add).toMatchObject({ startMonth: '2026-11' });
+    expect(planSave({ ...input, startDate: '2026-11-25' }, undefined, '2026-11-25', id).add).toMatchObject({ startMonth: '2026-11' });
   });
 
   it('金額を変えると、今月がもう入っていれば来月から', () => {
@@ -73,7 +73,7 @@ describe('保存・金額を変える・止める', () => {
   });
 
   it('金額が同じならそのまま直す。まだ一度も入っていなければそのまま直す', () => {
-    expect(planSave({ ...input, amount: 50000, name: '給料' }, r(), '2026-11-26', id)).toEqual({ update: { ...r(), name: '給料' } });
+    expect(planSave({ ...input, amount: 50000, name: '給料' }, r(), '2026-11-26', id)).toEqual({ update: { ...r(), name: '給料', endMonth: undefined, endDate: undefined } });
     expect(planSave(input, r({ startMonth: '2026-12' }), '2026-11-26', id).add).toBeUndefined();
   });
 
@@ -83,7 +83,7 @@ describe('保存・金額を変える・止める', () => {
     expect(p.add!.startMonth).toBe('2026-12');
     // 今日作ったばかり（今日の分が入った）の固定でも同じ
     expect(planSave(input, r({ startMonth: '2026-11' }), '2026-11-25', id).add!.startMonth).toBe('2026-12');
-    expect(planStop(r({ startMonth: '2026-11' }), '2026-11-25')).toEqual({ update: { ...r({ startMonth: '2026-11' }), endMonth: '2026-11' } });
+    expect(planStop(r({ startMonth: '2026-11' }), '2026-11-25')).toEqual({ update: { ...r({ startMonth: '2026-11' }), endMonth: '2026-11', endDate: '2026-11-25' } });
   });
 
   it('翌月払いをやめると前の設定が残らない', () => {
@@ -91,9 +91,30 @@ describe('保存・金額を変える・止める', () => {
     expect(p.update!.payFor).toBeUndefined();
   });
 
+  it('期間：始まりの日以降の最初の回から、終わりの日までの最後の回まで', () => {
+    const p = planSave({ ...input, startDate: '2026-12-01', endDate: '2027-03-24' }, undefined, '2026-11-26', id).add!;
+    expect(p).toMatchObject({ startMonth: '2026-12', endMonth: '2027-02', startDate: '2026-12-01', endDate: '2027-03-24' });
+    expect(countOccurrences(p.startMonth, p.endMonth)).toBe(3);
+    expect(countOccurrences('2026-12', undefined)).toBeUndefined();
+    expect(firstMonthOnOrAfter('2026-11-25', 25)).toBe('2026-11');
+    expect(lastMonthOnOrBefore('2027-03-25', 25)).toBe('2027-03');
+    // 過去の日から始めると、その日からの分が入る
+    expect(planSave({ ...input, startDate: '2026-09-01' }, undefined, '2026-11-26', id).add!.startMonth).toBe('2026-09');
+  });
+
+  it('もう入っている固定の終わりの日をあとから決める・ずっとに戻す', () => {
+    const p = planSave({ ...input, amount: 50000, endDate: '2027-06-30' }, r(), '2026-11-26', id);
+    expect(p.update).toMatchObject({ startMonth: '2026-09', endMonth: '2027-06' });
+    expect(planSave({ ...input, amount: 50000 }, r({ endMonth: '2027-06' }), '2026-11-26', id).update!.endMonth).toBeUndefined();
+    // 金額を変えると、新しいほうに終わりの日が付く
+    const q = planSave({ ...input, endDate: '2027-06-30' }, r(), '2026-11-26', id);
+    expect(q.update!.endMonth).toBe('2026-11');
+    expect(q.add).toMatchObject({ startMonth: '2026-12', endMonth: '2027-06', amount: 60000 });
+  });
+
   it('止める', () => {
-    expect(planStop(r(), '2026-11-26')).toEqual({ update: { ...r(), endMonth: '2026-11' } });
-    expect(planStop(r(), '2026-11-20')).toEqual({ update: { ...r(), endMonth: '2026-10' } });
+    expect(planStop(r(), '2026-11-26')).toEqual({ update: { ...r(), endMonth: '2026-11', endDate: '2026-11-25' } });
+    expect(planStop(r(), '2026-11-20')).toEqual({ update: { ...r(), endMonth: '2026-10', endDate: '2026-10-25' } });
     expect(planStop(r({ startMonth: '2026-12' }), '2026-11-26')).toEqual({ remove: 'r' });
     expect(isActive(r({ endMonth: '2026-11' }), '2026-11-26')).toBe(false);
     expect(isActive(r({ endMonth: '2026-11' }), '2026-11-20')).toBe(true);

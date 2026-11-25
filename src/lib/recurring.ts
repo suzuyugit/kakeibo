@@ -80,13 +80,38 @@ export function dueEntries(
   return out;
 }
 
-export type RecurringInput = Pick<Recurring, 'type' | 'name' | 'amount' | 'categoryId' | 'dayOfMonth' | 'paymentMethod' | 'payFor'>;
+export type RecurringInput = Pick<Recurring, 'type' | 'name' | 'amount' | 'categoryId' | 'dayOfMonth' | 'paymentMethod' | 'payFor'> & {
+  startDate: string; // この日から（この日以降の最初の回から入る）
+  endDate?: string; // この日まで（この日までの最後の回まで）。なければずっと
+};
+
+/** その日以降で最初に入る月 */
+export function firstMonthOnOrAfter(date: string, dayOfMonth: number): string {
+  const m = monthOf(date);
+  return dateFor(m, dayOfMonth) >= date ? m : addMonths(m, 1);
+}
+
+/** その日までで最後に入る月 */
+export function lastMonthOnOrBefore(date: string, dayOfMonth: number): string {
+  const m = monthOf(date);
+  return dateFor(m, dayOfMonth) <= date ? m : addMonths(m, -1);
+}
+
+/** 期間の中で入る回数（終わりがなければ undefined） */
+export function countOccurrences(startMonth: string, endMonth: string | undefined): number | undefined {
+  if (!endMonth) return undefined;
+  if (endMonth < startMonth) return 0;
+  const [y1, m1] = startMonth.split('-').map(Number);
+  const [y2, m2] = endMonth.split('-').map(Number);
+  return (y2 - y1) * 12 + (m2 - m1) + 1;
+}
 
 /**
  * 保存したときに、固定の一覧をどう変えるか。
- * - 新しく作る：次に入る月から
+ * - 新しく作る：始まりの日以降の最初の回から、終わりの日までの最後の回まで（終わりがなければずっと）
+ * - まだ一度も入っていない：そのまま直す（始まりの日も変えられる）
  * - 金額を変える：次の回から新しい額。今のものは前の月までで止め、新しいものを作る（もう入った記録は変えない）
- * - 金額以外だけ変える：そのまま直す
+ * - 金額以外だけ変える：そのまま直す（終わりの日も変えられる。始まりはそのまま）
  */
 export function planSave(
   input: RecurringInput,
@@ -94,24 +119,29 @@ export function planSave(
   today: string,
   newId: () => string,
 ): { update?: Recurring; add?: Recurring; remove?: string } {
-  const startNext = nextMonthFrom(input.dayOfMonth, today);
+  const { startDate, endDate, ...rest } = input;
+  const endMonth = endDate ? lastMonthOnOrBefore(endDate, input.dayOfMonth) : undefined;
+  const period = { endMonth, endDate };
   if (!existing) {
-    return { add: { ...input, id: newId(), startMonth: startNext, skippedMonths: [] } };
-  }
-  if (existing.amount === input.amount) {
-    return { update: { ...existing, ...input } };
+    const startMonth = firstMonthOnOrAfter(startDate, input.dayOfMonth);
+    return { add: { ...rest, ...period, id: newId(), startMonth, startDate, skippedMonths: [] } };
   }
   const from = upcomingMonth(existing.dayOfMonth, today);
-  // まだ一度も入っていなければ、そのまま直す
-  if (existing.startMonth >= from) return { update: { ...existing, ...input } };
-  const next: Recurring = { ...input, id: newId(), startMonth: from, endMonth: existing.endMonth, skippedMonths: [] };
-  if (next.endMonth && next.endMonth < from) return { update: { ...existing, ...input } };
-  return { update: { ...existing, endMonth: addMonths(from, -1) }, add: next };
+  // まだ一度も入っていなければ、始まりも含めてそのまま直す
+  if (existing.startMonth >= from) {
+    return { update: { ...existing, ...rest, ...period, startMonth: firstMonthOnOrAfter(startDate, input.dayOfMonth), startDate } };
+  }
+  if (existing.amount === input.amount || (endMonth && endMonth < from)) {
+    return { update: { ...existing, ...rest, ...period, amount: existing.amount === input.amount ? input.amount : existing.amount } };
+  }
+  const next: Recurring = { ...rest, ...period, id: newId(), startMonth: from, startDate: dateFor(from, input.dayOfMonth), skippedMonths: [] };
+  return { update: { ...existing, endMonth: addMonths(from, -1), endDate: dateFor(addMonths(from, -1), existing.dayOfMonth) }, add: next };
 }
 
 /** 止める：次の回から入らないようにする。一度も入っていなければ消す */
 export function planStop(existing: Recurring, today: string): { update?: Recurring; remove?: string } {
   const from = upcomingMonth(existing.dayOfMonth, today);
   if (existing.startMonth >= from) return { remove: existing.id };
-  return { update: { ...existing, endMonth: addMonths(from, -1) } };
+  const endMonth = addMonths(from, -1);
+  return { update: { ...existing, endMonth, endDate: dateFor(endMonth, existing.dayOfMonth) } };
 }
