@@ -6,7 +6,7 @@ import { RowList } from '../components/RowList';
 import { useCategories, useRows, useSettings } from '../hooks/useData';
 import { expenseByCategory, scheduledRows, totalsByDay, totalsIn, travelByCategory } from '../lib/aggregate';
 import { formatMd, parseYmd, todayYmd } from '../lib/date';
-import { yen } from '../lib/money';
+import { signedYen, yen } from '../lib/money';
 import { daysOf, inPeriod, periodByKey, periodLabel, periodOf, shiftKey } from '../lib/period';
 
 type Props = {
@@ -70,13 +70,25 @@ export function CalendarScreen({ selected, onSelect, onEdit, onAdd }: Props) {
           </button>
           <div className="month-title">
             <b>{periodLabel(period, startDay)}</b>
-            <span className="small">
-              <span className="plus">+{yen(month.income)}</span>　<span className="minus">−{yen(month.expense)}</span>
-            </span>
+
           </div>
           <button type="button" className="icon-btn" onClick={() => move(1)} aria-label="次の月">
             ›
           </button>
+        </div>
+        <div className="month-stats cal-month-stats">
+          <div>
+            <span className="muted small">収入</span>
+            <b className="plus">+{yen(month.income)}</b>
+          </div>
+          <div>
+            <span className="muted small">支出</span>
+            <b className="minus">−{yen(month.expense)}</b>
+          </div>
+          <div>
+            <span className="muted small">合計</span>
+            <b className={month.balance > 0 ? 'plus' : month.balance < 0 ? 'minus' : ''}>{signedYen(month.balance)}</b>
+          </div>
         </div>
         <div
           className="cal"

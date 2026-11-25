@@ -3356,3 +3356,15 @@ button.card.trip-card {
 .period-forever {
   align-self: flex-start;
 }
+
+.cal-month-stats {
+  margin: 0 0 10px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  background: var(--bg);
+  text-align: center;
+}
+
+.cal-month-stats > div {
+  align-items: center;
+}
