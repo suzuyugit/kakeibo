@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entry, LedgerTrip, Recurring } from '../db/types';
 import type { Row } from './aggregate';
-import { dailySpend, fixedBetween, pastSeries, projectedAt, tripForecasts, tripNeed } from './forecast';
+import { breakdownAt, dailySpend, fixedBetween, pastSeries, projectedAt, tripForecasts, tripNeed } from './forecast';
 
 const rec = (extra: Partial<Recurring>): Recurring => ({
   id: 'r', type: 'income', name: '', amount: 50000, categoryId: '', dayOfMonth: 25, startMonth: '2026-01', skippedMonths: [], ...extra,
@@ -69,6 +69,21 @@ describe('旅行の日の見込み', () => {
     const [f] = tripForecasts({ ...base, trips: [now] });
     expect(f).toMatchObject({ ongoing: true, daysLeft: 0, atStart: 100000, after: 70000 });
     expect(projectedAt({ ...base, trips: [now] }, '2026-11-26')).toBe(100000 - 1000 - 30000);
+  });
+});
+
+describe('任意の日の見込みの内訳', () => {
+  it('内訳を足すと見込みと同じ', () => {
+    const input = {
+      savings: 100000, today: '2026-11-25', perDay: 1000,
+      recurrings: [rec({}), rec({ id: 'x', type: 'expense', amount: 8000, dayOfMonth: 27 })],
+      trips: [trip({ name: '京都', startDate: '2026-12-20', endDate: '2026-12-21', budgetYen: 30000 })],
+      cardOut: [{ date: '2026-12-10', amount: 4000 }],
+    };
+    const b = breakdownAt(input, '2026-12-31');
+    expect(b).toMatchObject({ fixedIn: 50000, fixedOut: 16000, daily: 36000, card: 4000, trips: [{ name: '京都', amount: 30000 }] });
+    expect(b.total).toBe(100000 + 50000 - 16000 - 36000 - 4000 - 30000);
+    expect(b.total).toBe(projectedAt(input, '2026-12-31'));
   });
 });
 

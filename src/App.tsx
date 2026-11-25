@@ -8,6 +8,7 @@ import { HomeScreen } from './screens/HomeScreen';
 import { CalendarScreen } from './screens/CalendarScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { SavingsScreen } from './screens/SavingsScreen';
+import { ChartsScreen } from './screens/ChartsScreen';
 import { todayYmd } from './lib/date';
 import { applyRecurring } from './db/recurringRepo';
 import { showToast } from './components/Toast';
@@ -15,6 +16,7 @@ import { showToast } from './components/Toast';
 const TABS: { key: TabKey; icon: string; label: string; title: string }[] = [
   { key: 'home', icon: '🏠', label: 'ホーム', title: '家計簿' },
   { key: 'calendar', icon: '📅', label: 'カレンダー', title: 'カレンダー' },
+  { key: 'charts', icon: '📊', label: 'グラフ', title: 'グラフ' },
   { key: 'savings', icon: '💰', label: '貯金', title: '貯金' },
   { key: 'settings', icon: '⚙️', label: '設定', title: '設定' },
 ];
@@ -61,6 +63,8 @@ export function App() {
           <HomeScreen onEdit={edit} />
         ) : route.name === 'calendar' ? (
           <CalendarScreen selected={day} onSelect={setDay} onEdit={edit} onAdd={openNew} />
+        ) : route.name === 'charts' ? (
+          <ChartsScreen />
         ) : route.name === 'savings' ? (
           <SavingsScreen />
         ) : (

@@ -1,5 +1,7 @@
 import { SavingsCard } from '../components/SavingsCard';
 import { SavingsChart } from '../components/SavingsChart';
+import { SavingsAtMonth } from '../components/SavingsAtMonth';
+import { monthOf } from '../lib/recurring';
 import { TripForecastBody } from '../components/TripForecastCard';
 import { LedgerImportButton } from '../components/LedgerImport';
 import { removeTrip } from '../components/ledgerActions';
@@ -23,6 +25,13 @@ export function SavingsScreen() {
 
   const past = pastSeries(fc.savings.base, fc.savings.asOf, rows, fc.today, (r) => countsTowardSavings(r, settings, fc.today), (r) => moneyDate(r, settings));
   const perMonth = Math.round(fc.daily.perDay * 30);
+
+  // 旅行で出ていく月（月を選ぶ欄に ✈️ を出す）
+  const tripMonths = new Map<string, string[]>();
+  for (const f of fc.forecasts) {
+    const m = monthOf(f.ongoing ? fc.today : f.trip.startDate);
+    tripMonths.set(m, [...(tripMonths.get(m) ?? []), f.trip.name]);
+  }
   const fixedIn = fc.recurrings.filter((r) => r.type === 'income' && !r.endMonth).reduce((a, r) => a + r.amount, 0);
   const fixedOut = fc.recurrings.filter((r) => r.type === 'expense' && !r.endMonth).reduce((a, r) => a + r.amount, 0);
 
@@ -55,6 +64,8 @@ export function SavingsScreen() {
         <h3 className="card-title">貯金の見込み</h3>
         <SavingsChart past={past} input={fc.input} marks={fc.forecasts.map((f) => ({ date: f.ongoing ? fc.today : f.trip.startDate, name: f.trip.name }))} />
       </section>
+
+      <SavingsAtMonth input={fc.input} tripMonths={tripMonths} />
 
       <section className="card">
         <h3 className="card-title">見込みの出し方</h3>

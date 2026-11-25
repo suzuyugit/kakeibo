@@ -23,14 +23,18 @@ function man(n: number): string {
   return `${(Math.round(n / 1000) / 10).toLocaleString('ja-JP')}万`;
 }
 
-/** きりのいい目盛り（4本くらい） */
-function ticks(min: number, max: number): number[] {
+/** きりのいい目盛り（4本くらい）。最小値以下から最大値以上まで */
+export function ticks(min: number, max: number): number[] {
   const span = Math.max(1, max - min);
   const raw = span / 4;
   const pow = 10 ** Math.floor(Math.log10(raw));
   const step = [1, 2, 5, 10].map((m) => m * pow).find((s) => s >= raw)!;
   const out: number[] = [];
-  for (let v = Math.floor(min / step) * step; v <= max + step / 2; v += step) out.push(v);
+  // いちばん上の目盛りが最大値より下にならないように（線が上にはみ出さない）
+  for (let v = Math.floor(min / step) * step; ; v += step) {
+    out.push(v);
+    if (v >= max) break;
+  }
   return out;
 }
 

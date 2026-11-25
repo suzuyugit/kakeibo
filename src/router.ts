@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 // GitHub Pages ではサーバー側のルーティングが使えないので、ハッシュ（#/...）で画面を切り替える。
 
-export type TabKey = 'home' | 'calendar' | 'savings' | 'settings';
+export type TabKey = 'home' | 'calendar' | 'charts' | 'savings' | 'settings';
 
 export type Route = { name: TabKey };
 
@@ -11,6 +11,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === 'calendar') return { name: 'calendar' };
   if (parts[0] === 'settings') return { name: 'settings' };
   if (parts[0] === 'savings') return { name: 'savings' };
+  if (parts[0] === 'charts') return { name: 'charts' };
   return { name: 'home' };
 }
 
