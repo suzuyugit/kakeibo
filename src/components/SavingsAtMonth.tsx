@@ -1,11 +1,19 @@
 import { useState } from 'react';
+import { SavingsChart } from './SavingsChart';
 import { breakdownAt, type ForecastInput } from '../lib/forecast';
 import { monthEnds } from '../lib/chartData';
 import { signedYen, yen } from '../lib/money';
 import { addMonths, monthOf } from '../lib/recurring';
 
-/** 好きな月を選ぶと「このままいけば ○月末には ○円」と内訳を出す */
-export function SavingsAtMonth({ input, tripMonths }: { input: ForecastInput; tripMonths: Map<string, string[]> }) {
+type Props = {
+  input: ForecastInput;
+  tripMonths: Map<string, string[]>;
+  past: { date: string; value: number }[];
+  marks: { date: string; name: string }[];
+};
+
+/** 貯金の見込み：グラフと、スライドして選んだ月の「このままいけば ○円」と内訳 */
+export function SavingsAtMonth({ input, tripMonths, past, marks }: Props) {
   const months = monthEnds(monthOf(input.today), addMonths(monthOf(input.today), 35));
   const [idx, setIdx] = useState(1); // 0 = 今月
   const month = months[idx].month;
@@ -16,8 +24,9 @@ export function SavingsAtMonth({ input, tripMonths }: { input: ForecastInput; tr
 
   return (
     <section className="card">
-      <h3 className="card-title">好きな月の貯金を見る</h3>
-      <p className="muted small">左右にスライドすると、その月の終わりの貯金の見込みが出ます。</p>
+      <h3 className="card-title">貯金の見込み</h3>
+      <SavingsChart past={past} input={input} marks={marks} focus={end} />
+      <p className="muted small slider-help">下のつまみを左右にスライドすると、その月の終わりの貯金の見込みが出ます。</p>
       <div className="slider-head">
         <button type="button" className="icon-btn" disabled={idx === 0} onClick={() => setIdx(idx - 1)} aria-label="前の月">
           ‹
@@ -75,6 +84,12 @@ export function SavingsAtMonth({ input, tripMonths }: { input: ForecastInput; tr
           <li>
             <span>ふだんの支出（見込み）</span>
             <b className="minus">−{yen(b.daily)}</b>
+          </li>
+        )}
+        {b.payIn > 0 && (
+          <li>
+            <span>給料などの振込（もう記録した分）</span>
+            <b className="plus">+{yen(b.payIn)}</b>
           </li>
         )}
         {b.card > 0 && (

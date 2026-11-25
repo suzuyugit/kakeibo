@@ -3608,3 +3608,42 @@ button.card.trip-card {
 .pad-key.zero {
   grid-column: span 2;
 }
+
+.pay-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pay-row select {
+  width: auto;
+}
+
+.savings-chart .focus-line {
+  stroke: var(--primary);
+  stroke-width: 1.5;
+}
+
+.savings-chart .dot-focus {
+  fill: var(--surface);
+  stroke: var(--primary);
+  stroke-width: 2.5;
+}
+
+.slider-help {
+  margin: 8px 0 0;
+}
+
+.month-slider,
+.month-slider:focus {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+.month-slider:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}

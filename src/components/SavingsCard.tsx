@@ -4,7 +4,7 @@ import type { Row } from '../lib/aggregate';
 import { formatMd, todayYmd } from '../lib/date';
 import { signedYen, yen } from '../lib/money';
 import { savingsNow } from '../lib/savings';
-import { pendingCard } from '../lib/card';
+import { pendingCard, pendingPay } from '../lib/card';
 import { SavingsForm } from './SavingsForm';
 import { Sheet } from './Sheet';
 
@@ -14,6 +14,7 @@ export function SavingsCard({ settings, rows }: { settings: Settings; rows: Row[
   const today = todayYmd();
   const s = savingsNow(settings, rows, today);
   const card = pendingCard(rows, settings, today);
+  const pay = pendingPay(rows, today);
 
   if (!s) {
     return (
@@ -40,17 +41,24 @@ export function SavingsCard({ settings, rows }: { settings: Settings; rows: Row[
         {formatMd(s.asOf)}に入れた {yen(s.base)}
         {s.change !== 0 && <> ／ その後の収支 {signedYen(s.change)}</>}
       </div>
-      {card.length > 0 && (
+      {(card.length > 0 || pay.length > 0) && (
         <div className="card-pending">
-          {card.map((c) => (
-            <div key={c.date} className="forecast-row">
-              <span className="muted small">💳 {formatMd(c.date)} にカードの引き落とし</span>
-              <b>−{yen(c.amount)}</b>
-            </div>
-          ))}
+          {[...pay.map((c) => ({ ...c, kind: 'pay' as const })), ...card.map((c) => ({ ...c, kind: 'card' as const }))]
+            .sort((a, b) => (a.date < b.date ? -1 : 1))
+            .map((c) => (
+              <div key={c.kind + c.date} className="forecast-row">
+                <span className="muted small">
+                  {c.kind === 'pay' ? `💴 ${formatMd(c.date)} に振込` : `💳 ${formatMd(c.date)} にカードの引き落とし`}
+                </span>
+                <b className={c.kind === 'pay' ? 'plus' : ''}>
+                  {c.kind === 'pay' ? '+' : '−'}
+                  {yen(c.amount)}
+                </b>
+              </div>
+            ))}
           <div className="forecast-row">
-            <span className="muted small">引き落としのあと</span>
-            <b>{yen(s.total - card.reduce((a, c) => a + c.amount, 0))}</b>
+            <span className="muted small">ぜんぶ済んだあと</span>
+            <b>{yen(s.total + pay.reduce((a, c) => a + c.amount, 0) - card.reduce((a, c) => a + c.amount, 0))}</b>
           </div>
         </div>
       )}

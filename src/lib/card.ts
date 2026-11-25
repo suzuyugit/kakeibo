@@ -20,9 +20,25 @@ export function withdrawalDate(date: string, cardPayDay: number, closeDay?: numb
   return dateFor(addMonths(closingMonth(date, closeDay), 1), cardPayDay);
 }
 
-/** お金が実際に口座から出入りする日。カードは引き落とし日、それ以外は記録の日 */
+/** お金が実際に口座から出入りする日。カードは引き落とし日、あとで振り込まれる収入は振込日、それ以外は記録の日 */
 export function moneyDate(r: Row, rule: CardRule): string {
+  if (r.type === 'income' && r.entry?.payDate) return r.entry.payDate;
   return rule.cardPayDay && isCard(r) ? withdrawalDate(r.date, rule.cardPayDay, rule.cardCloseDay) : r.date;
+}
+
+/** 今日より後に振り込まれる収入（振込日ごと、日付の順） */
+export function pendingPay(rows: Row[], today: string): { date: string; amount: number }[] {
+  const m = new Map<string, number>();
+  for (const r of rows) {
+    const d = r.type === 'income' ? r.entry?.payDate : undefined;
+    if (d && d > today) m.set(d, (m.get(d) ?? 0) + r.amount);
+  }
+  return [...m.entries()].map(([date, amount]) => ({ date, amount })).sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+/** 働いた日（記録の日）から、翌月の決めた日の振込日 */
+export function nextMonthPayDate(date: string, payDay: number): string {
+  return dateFor(addMonths(monthOf(date), 1), payDay);
 }
 
 /** 今日より後に引き落とされるカードの分（引き落とし日ごと、日付の順） */

@@ -32,6 +32,7 @@ export function RowList({ rows, onEdit, showDate, signColors }: Props) {
               <span className="expense-title">
                 {r.title}
                 {r.scheduled ? <span className="tag tag-plan">予定</span> : r.fixed && <span className="tag">固定</span>}
+                {r.entry?.payDate && <span className="tag">💴 {formatMd(r.entry.payDate)}振込</span>}
               </span>
               {(showDate || r.sub || r.trip) && (
                 <span className="expense-sub">

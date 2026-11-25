@@ -11,6 +11,7 @@ export type Entry = {
   amount: number; // 円（プラスの数）
   categoryId: string;
   paymentMethod?: PaymentMethod; // 支出のとき
+  payDate?: string; // 収入のとき、実際に振り込まれる日（例：働いた日の翌月25日）。なければ date の日に入る
   memo?: string;
   recurringId?: string; // 固定の収入・支出から自動で作ったもの
   recurringMonth?: string; // YYYY-MM（カレンダーの月）。二重に作らないため

@@ -1,5 +1,4 @@
 import { SavingsCard } from '../components/SavingsCard';
-import { SavingsChart } from '../components/SavingsChart';
 import { SavingsAtMonth } from '../components/SavingsAtMonth';
 import { monthOf } from '../lib/recurring';
 import { TripForecastBody } from '../components/TripForecastCard';
@@ -60,12 +59,13 @@ export function SavingsScreen() {
         ))
       )}
 
-      <section className="card">
-        <h3 className="card-title">貯金の見込み</h3>
-        <SavingsChart past={past} input={fc.input} marks={fc.forecasts.map((f) => ({ date: f.ongoing ? fc.today : f.trip.startDate, name: f.trip.name }))} />
-      </section>
 
-      <SavingsAtMonth input={fc.input} tripMonths={tripMonths} />
+      <SavingsAtMonth
+        input={fc.input}
+        tripMonths={tripMonths}
+        past={past}
+        marks={fc.forecasts.map((f) => ({ date: f.ongoing ? fc.today : f.trip.startDate, name: f.trip.name }))}
+      />
 
       <section className="card">
         <h3 className="card-title">見込みの出し方</h3>

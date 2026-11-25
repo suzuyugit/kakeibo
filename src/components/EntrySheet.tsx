@@ -3,7 +3,7 @@ import type { Entry, EntryType, PaymentMethod } from '../db/types';
 import { deleteEntry, lastPaymentMethod, restoreEntry, saveEntry, validateEntry } from '../db/entryRepo';
 import { forPicker } from '../db/categoryRepo';
 import { useCategories, useSettings } from '../hooks/useData';
-import { withdrawalDate } from '../lib/card';
+import { nextMonthPayDate, withdrawalDate } from '../lib/card';
 import { formatMd, parseYmd, todayYmd, toYmd } from '../lib/date';
 import { yen } from '../lib/money';
 import { evaluate } from '../lib/calc';
@@ -19,6 +19,27 @@ type Props = {
   initialDate?: string;
   onClose: () => void;
 };
+
+const LAST_PAY_KEY = 'kakeibo.lastPay';
+
+/** 前回の収入の入り方（翌月振込か、その日） */
+function loadLastPay(): { deferred: boolean; day: number } {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAST_PAY_KEY) ?? 'null');
+    if (v && typeof v.deferred === 'boolean' && v.day >= 1 && v.day <= 31) return v;
+  } catch {
+    // 読めなければ初期値
+  }
+  return { deferred: false, day: 25 };
+}
+
+function saveLastPay(v: { deferred: boolean; day: number }) {
+  try {
+    localStorage.setItem(LAST_PAY_KEY, JSON.stringify(v));
+  } catch {
+    // 覚えられなくても動作に影響はない
+  }
+}
 
 function yesterdayYmd(): string {
   const d = parseYmd(todayYmd());
@@ -36,6 +57,11 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(entry?.paymentMethod ?? lastPaymentMethod());
   const [date, setDate] = useState(entry?.date ?? initialDate ?? todayYmd());
   const [memo, setMemo] = useState(entry?.memo ?? '');
+  // 収入：その日に入るか、翌月の決めた日に振り込まれるか（給料など）。前回の選び方を覚えておく
+  const lastPay = loadLastPay();
+  const [deferred, setDeferred] = useState(entry ? !!entry.payDate : lastPay.deferred);
+  const [payDay, setPayDay] = useState(entry?.payDate ? Number(entry.payDate.slice(8)) : lastPay.day);
+  const payDate = nextMonthPayDate(date, payDay);
   const [error, setError] = useState('');
   const [addingCat, setAddingCat] = useState(false);
 
@@ -55,10 +81,19 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
   };
 
   const save = async () => {
-    const input = { type, date, amount: amountNum ?? 0, categoryId, paymentMethod: type === 'expense' ? paymentMethod : undefined, memo };
+    const input = {
+      type,
+      date,
+      amount: amountNum ?? 0,
+      categoryId,
+      paymentMethod: type === 'expense' ? paymentMethod : undefined,
+      payDate: type === 'income' && deferred ? payDate : undefined,
+      memo,
+    };
     const msg = Number.isNaN(amountNum) ? '計算式が正しくありません' : amountNum !== undefined && amountNum <= 0 ? '金額が0円以下です' : validateEntry(input);
     if (msg) return setError(msg);
     await saveEntry(input, entry?.id);
+    if (type === 'income') saveLastPay({ deferred, day: payDay });
     showToast(entry ? '保存しました' : `${type === 'expense' ? '支出' : '収入'} ${yen(input.amount)} を記録しました`);
     onClose();
   };
@@ -166,6 +201,34 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
             <span className="cat-name">追加</span>
           </button>
         </div>
+
+        {type === 'income' && (
+          <div className="field">
+            <span className="label">入る日</span>
+            <div className="chips" role="radiogroup">
+              <button type="button" role="radio" aria-checked={!deferred} className={`pick ${!deferred ? 'active' : ''}`} onClick={() => setDeferred(false)}>
+                この日に入る
+              </button>
+              <button type="button" role="radio" aria-checked={deferred} className={`pick ${deferred ? 'active' : ''}`} onClick={() => setDeferred(true)}>
+                翌月に振込（給料など）
+              </button>
+            </div>
+            {deferred && (
+              <div className="pay-row">
+                <span>翌月</span>
+                <select value={payDay} onChange={(e) => setPayDay(Number(e.target.value))} aria-label="振込の日">
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                    <option key={d} value={d}>
+                      {d}日
+                    </option>
+                  ))}
+                </select>
+                <span className="muted small">→ 💴 {formatMd(payDate)} に振込</span>
+              </div>
+            )}
+            {deferred && <span className="muted small">カレンダーには働いた日（{formatMd(date)}）に出て、貯金は振込の日に増えます。</span>}
+          </div>
+        )}
 
         {type === 'expense' && (
           <div className="field">

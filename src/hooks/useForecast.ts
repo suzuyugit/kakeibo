@@ -5,7 +5,7 @@ import type { Row } from '../lib/aggregate';
 import { todayYmd } from '../lib/date';
 import { dailySpend, tripForecasts, type DailySpend, type ForecastInput, type TripForecast } from '../lib/forecast';
 import { savingsNow, type SavingsNow } from '../lib/savings';
-import { pendingCard } from '../lib/card';
+import { pendingCard, pendingPay } from '../lib/card';
 
 export type ForecastData = {
   today: string;
@@ -26,6 +26,7 @@ export function useForecast(settings: Settings, rows: Row[] | undefined): Foreca
   const savings = savingsNow(settings, rows, today);
   const daily = dailySpend(rows, today, settings, recurrings);
   const cardOut = pendingCard(rows, settings, today);
-  const input = savings ? { savings: savings.total, today, recurrings, perDay: daily.perDay, trips, cardOut } : undefined;
+  const payIn = pendingPay(rows, today);
+  const input = savings ? { savings: savings.total, today, recurrings, perDay: daily.perDay, trips, cardOut, payIn } : undefined;
   return { today, savings, daily, cardOut, input, trips, forecasts: input ? tripForecasts(input) : [], recurrings };
 }

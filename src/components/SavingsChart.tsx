@@ -11,6 +11,8 @@ type Props = {
   input: ForecastInput;
   /** グラフに印を付ける旅行（出発日・名前） */
   marks: { date: string; name: string }[];
+  /** スライダーで選んでいる日（月末）。グラフをその日まで伸ばし、縦の線と点を出す */
+  focus?: string;
 };
 
 const W = 360;
@@ -39,7 +41,7 @@ export function ticks(min: number, max: number): number[] {
 }
 
 /** これまでの貯金（実線）とこれからの見込み（点線）。旅行で出ていく日は下がる */
-export function SavingsChart({ past, input, marks }: Props) {
+export function SavingsChart({ past, input, marks, focus }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -47,11 +49,11 @@ export function SavingsChart({ past, input, marks }: Props) {
     // これまでは最大60日分、これからは最後の旅行の1週間後か、2か月後までの長いほう
     const shownPast = past.slice(-60).map((p) => ({ ...p, future: false }));
     const lastMark = marks.reduce((m, x) => (x.date > m ? x.date : m), input.today);
-    const end = [addDays(lastMark, 7), addDays(input.today, 60)].sort().at(-1)!;
+    const end = [addDays(lastMark, 7), addDays(input.today, 60), focus ? addDays(focus, 5) : input.today].sort().at(-1)!;
     const fut: Point[] = [];
     for (let d = addDays(input.today, 1); d <= end; d = addDays(d, 1)) fut.push({ date: d, value: projectedAt(input, d), future: true });
     return [...shownPast, ...fut];
-  }, [past, input, marks]);
+  }, [past, input, marks, focus]);
 
   if (points.length < 2) return null;
   const values = points.map((p) => p.value);
@@ -68,7 +70,10 @@ export function SavingsChart({ past, input, marks }: Props) {
   const futPts = todayIdx >= 0 ? points.slice(todayIdx) : points;
 
   // 月の始まりに目盛り
-  const months = points.filter((p, i) => i > 0 && p.date.endsWith('-01'));
+  const allMonths = points.filter((p, i) => i > 0 && p.date.endsWith('-01'));
+  // 長い期間のときは目盛りを間引く（3か月ごと・6か月ごと）
+  const every = allMonths.length > 18 ? 6 : allMonths.length > 8 ? 3 : 1;
+  const months = allMonths.filter((p) => (Number(p.date.slice(5, 7)) - 1) % every === 0);
 
   const onMove = (clientX: number) => {
     const svg = svgRef.current;
@@ -81,6 +86,7 @@ export function SavingsChart({ past, input, marks }: Props) {
   };
 
   const hp = hover !== null ? points[hover] : null;
+  const focusPt = focus ? points.find((p) => p.date === focus) : undefined;
   const markOn = hp ? marks.find((m) => m.date === hp.date) : undefined;
 
   return (
@@ -105,7 +111,7 @@ export function SavingsChart({ past, input, marks }: Props) {
         ))}
         {months.map((p) => (
           <text key={p.date} x={x(p.date)} y={H - 6} textAnchor="middle" className="tick">
-            {Number(p.date.slice(5, 7))}月
+            {p.date.slice(5, 7) === '01' && every > 1 ? `${p.date.slice(2, 4)}年1月` : `${Number(p.date.slice(5, 7))}月`}
           </text>
         ))}
         {marks.map((m) =>
@@ -121,6 +127,12 @@ export function SavingsChart({ past, input, marks }: Props) {
         {pastPts.length > 1 && <path d={path(pastPts)} className="line-past" />}
         <path d={path(futPts)} className="line-future" />
         {todayIdx >= 0 && <circle cx={x(points[todayIdx].date)} cy={y(points[todayIdx].value)} r={4} className="dot-today" />}
+        {focusPt && (
+          <g>
+            <line x1={x(focusPt.date)} x2={x(focusPt.date)} y1={PAD.top} y2={H - PAD.bottom} className="focus-line" />
+            <circle cx={x(focusPt.date)} cy={y(focusPt.value)} r={5} className="dot-focus" />
+          </g>
+        )}
         {hp && (
           <g>
             <line x1={x(hp.date)} x2={x(hp.date)} y1={PAD.top} y2={H - PAD.bottom} className="crosshair" />

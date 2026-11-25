@@ -29,6 +29,7 @@ export type EntryInput = {
   amount: number;
   categoryId: string;
   paymentMethod?: PaymentMethod;
+  payDate?: string; // 収入のとき、振り込まれる日
   memo?: string;
 };
 
@@ -58,11 +59,13 @@ export async function saveEntry(input: EntryInput, id?: string, now = new Date()
       amount: input.amount,
       categoryId: input.categoryId,
       paymentMethod: input.type === 'expense' ? input.paymentMethod : undefined,
+      payDate: input.type === 'income' && input.payDate && input.payDate !== input.date ? input.payDate : undefined,
       memo: input.memo?.trim() || undefined,
       createdAt: prev?.createdAt ?? now,
       updatedAt: now,
     };
     if (!e.paymentMethod) delete e.paymentMethod;
+    if (!e.payDate) delete e.payDate;
     if (!e.memo) delete e.memo;
     await db.entries.put(e);
     if (!prev || prev.categoryId !== e.categoryId) {
