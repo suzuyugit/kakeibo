@@ -105,6 +105,20 @@ describe('1か月の収入と支出を決めたときの見込み', () => {
   });
 });
 
+describe('毎月決めた日にまとめて入る・出る', () => {
+  it('その日になったら段になって増減する（なだらかにしない）', () => {
+    const base = { savings: 100000, today: '2026-11-25', perDay: 0, trips: [], recurrings: [rec({ id: 'x', type: 'expense', amount: 20000, dayOfMonth: 27 })] };
+    const input = { ...base, incomeMonthly: { amount: 80000, day: 10 }, spendMonthly: { amount: 50000, day: 31 } };
+    expect(projectedAt(input, '2026-11-26')).toBe(100000);
+    expect(projectedAt(input, '2026-11-27')).toBe(80000); // 家賃はその日
+    // 支出は月末にまとめて。今月（11月）は残り5日分（50,000 × 5/30）だけ
+    expect(projectedAt(input, '2026-11-30')).toBe(80000 - 8333);
+    expect(projectedAt(input, '2026-12-09')).toBe(80000 - 8333);
+    expect(projectedAt(input, '2026-12-10')).toBe(80000 - 8333 + 80000); // 収入は10日
+    expect(breakdownAt(input, '2026-12-31')).toMatchObject({ income: 80000, daily: 8333 + 50000, fixedOut: 40000 });
+  });
+});
+
 describe('これまでの推移', () => {
   it('入れた日から今日まで、1日ごと', () => {
     const rows = [row('2026-11-23', 500), row('2026-11-24', 2000, {}, 'income')];

@@ -74,8 +74,12 @@ export type ForecastInput = {
   cardOut?: { date: string; amount: number }[];
   /** これから振り込まれる収入（もう記録した給料など） */
   payIn?: { date: string; amount: number }[];
-  /** 1日あたりの収入（「1か月の収入」を入れたとき。skipFixedIncome なら固定の収入も含む） */
+  /** 1日あたりの収入（「1か月の収入」を毎日少しずつ入れるとき。skipFixedIncome なら固定の収入も含む） */
   incomePerDay?: number;
+  /** 1か月の収入（固定以外）を、毎月この日にまとめて入れる（incomePerDay の代わり） */
+  incomeMonthly?: { amount: number; day: number };
+  /** 1か月の支出（固定以外）を、毎月この日にまとめて引く（perDay の代わり） */
+  spendMonthly?: { amount: number; day: number };
   /** 固定の収入を別に足さない（収入の額に含めたとき） */
   skipFixedIncome?: boolean;
   /** 固定費を別に引かない（支出の額に含めたとき） */
@@ -94,6 +98,25 @@ export type Breakdown = {
   total: number; // その日の終わりの見込み
 };
 
+/**
+ * 毎月 day 日にまとめて入る（出る）額の、after（今日）より後・until までの合計。
+ * prorateThisMonth なら、今月の分は今月の残りの日数ぶんだけにする（今月の支出はもう記録した分があるため）
+ */
+export function monthlyBetween(m: { amount: number; day: number }, after: string, until: string, prorateThisMonth = false): number {
+  let sum = 0;
+  for (let mo = monthOf(after); mo <= monthOf(until); mo = addMonths(mo, 1)) {
+    const d = dateFor(mo, m.day);
+    if (d > after && d <= until) {
+      if (prorateThisMonth && mo === monthOf(after)) {
+        const last = Number(dateFor(mo, 31).slice(8));
+        const left = last - Number(after.slice(8));
+        sum += Math.round((m.amount * left) / last);
+      } else sum += m.amount;
+    }
+  }
+  return sum;
+}
+
 /** その日の見込みの内訳。旅行の分は、その日に出ていくものを含めるか（includeTripsOn） */
 function parts(input: ForecastInput, date: string, includeTripsOn: boolean): Breakdown {
   const { savings, today, recurrings, perDay, trips } = input;
@@ -102,8 +125,8 @@ function parts(input: ForecastInput, date: string, includeTripsOn: boolean): Bre
   const fixedIn = input.skipFixedIncome ? 0 : fixed.filter((f) => f.signed > 0).reduce((a, f) => a + f.signed, 0);
   const fixedOut = input.skipFixedExpense ? 0 : -fixed.filter((f) => f.signed < 0).reduce((a, f) => a + f.signed, 0);
   const days = dayCount(today, date) - 1;
-  const income = Math.round((input.incomePerDay ?? 0) * days);
-  const daily = Math.round(perDay * days);
+  const income = input.incomeMonthly ? monthlyBetween(input.incomeMonthly, today, date) : Math.round((input.incomePerDay ?? 0) * days);
+  const daily = input.spendMonthly ? monthlyBetween(input.spendMonthly, today, date, true) : Math.round(perDay * days);
   const card = (input.cardOut ?? []).filter((c) => c.date > today && c.date <= date).reduce((a, c) => a + c.amount, 0);
   const payIn = (input.payIn ?? []).filter((c) => c.date > today && c.date <= date).reduce((a, c) => a + c.amount, 0);
   const out = trips

@@ -33,6 +33,8 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
   const settings = useSettings();
   const [type, setType] = useState<EntryType>(entry?.type ?? 'expense');
   const [amount, setAmount] = useState(entry ? String(entry.amount) : '');
+  // 編集で開いてすぐ数字を押したら打ち直し（＋などなら今の額に続ける）
+  const [amountFresh, setAmountFresh] = useState(!!entry);
   const [categoryId, setCategoryId] = useState(entry?.categoryId ?? '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(entry ? payKind(entry.paymentMethod) : lastPaymentMethod());
   const [date, setDate] = useState(entry?.date ?? initialDate ?? todayYmd());
@@ -168,8 +170,10 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
         <AmountPad
           value={amount}
           type={type}
+          fresh={amountFresh}
           onChange={(v) => {
             setAmount(v);
+            setAmountFresh(false);
             setError('');
           }}
         />

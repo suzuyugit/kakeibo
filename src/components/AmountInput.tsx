@@ -55,6 +55,8 @@ function CalcSheet(props: {
   const { label, initial, allowEmpty, type, onClose, onDone } = props;
   const [expr, setExpr] = useState(initial !== undefined && initial > 0 ? String(initial) : '');
   const [error, setError] = useState('');
+  // 開いてすぐ数字を押したら打ち直し、＋などを押したら今の値に続けて計算
+  const [fresh, setFresh] = useState(expr !== '');
   const done = () => {
     const n = evaluate(expr);
     if (n === undefined) {
@@ -84,12 +86,14 @@ function CalcSheet(props: {
         <AmountPad
           value={expr}
           type={type}
+          fresh={fresh}
           onChange={(v) => {
             setExpr(v);
+            setFresh(false);
             setError('');
           }}
         />
-        {allowEmpty && <p className="muted small">C で消して「決定」を押すと「なし」になります。</p>}
+        <p className="muted small">数字を押すと打ち直し、＋−×÷を押すと今の額に続けて計算します。{allowEmpty && ' C で消して「決定」を押すと「なし」になります。'}</p>
       </div>
     </Sheet>
   );

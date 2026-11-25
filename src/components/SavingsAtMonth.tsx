@@ -21,17 +21,21 @@ type Props = {
   fixedIn: number;
   /** 記録からの、固定以外の収入の1か月あたりの平均 */
   incomeAverage: number;
+  /** 固定以外の収入をまとめて入れる日の初期値（給料のいつもの振込日） */
+  defaultIncomeDay?: number;
+  /** 固定以外の支出をまとめて引く日の初期値（カードの引き落とし日。なければ月末） */
+  defaultSpendDay?: number;
 };
 
 const PLAN_KEY = 'kakeibo.forecastPlan';
 
 /** 見込みに使う1か月の収入と支出（自分で変えた分だけ。なければ初期値） */
-type Plan = { income?: number; incomeWithFixed: boolean; spend?: number; spendWithFixed?: boolean };
+type Plan = { income?: number; incomeWithFixed: boolean; spend?: number; spendWithFixed?: boolean; incomeDay?: number; spendDay?: number };
 
 function loadPlan(): Plan {
   try {
     const v = JSON.parse(localStorage.getItem(PLAN_KEY) ?? 'null');
-    if (v && typeof v === 'object') return { incomeWithFixed: v.incomeWithFixed !== false, income: v.income, spend: v.spend, spendWithFixed: v.spendWithFixed };
+    if (v && typeof v === 'object') return { incomeWithFixed: v.incomeWithFixed !== false, income: v.income, spend: v.spend, spendWithFixed: v.spendWithFixed, incomeDay: v.incomeDay, spendDay: v.spendDay };
   } catch {
     // 読めなければ初期値
   }
@@ -55,11 +59,16 @@ function MonthlyField(props: {
   fixedLabel: string;
   note: string;
   changed: boolean;
+  day: number; // 0 = 毎日少しずつ
+  dayLabel: string; // 「入る日」「出る日」
   onChange: (v: number) => void;
   onMode: (withFixed: boolean) => void;
+  onDay: (day: number) => void;
   onReset: () => void;
 }) {
-  const { label, value, withFixed, fixed, fixedLabel, note, changed, onChange, onMode, onReset } = props;
+  const { label, value, withFixed, fixed, fixedLabel, note, changed, day, dayLabel, onChange, onMode, onDay, onReset } = props;
+  const rest = withFixed ? Math.max(0, value - fixed) : value; // 固定以外の分（決めた日にまとめて）
+  const when = day === 0 ? '毎日少しずつ' : `毎月${day === 31 ? '末' : `${day}日`}に`;
   return (
     <div className="spend-field">
       <span className="label">{label}</span>
@@ -72,6 +81,17 @@ function MonthlyField(props: {
           +1万
         </button>
       </div>
+      <label className="pay-row">
+        <span className="muted small">{dayLabel}</span>
+        <select value={day} onChange={(e) => onDay(Number(e.target.value))} aria-label={`${label}の${dayLabel}`}>
+          {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+            <option key={d} value={d}>
+              毎月{d === 31 ? '末' : `${d}日`}
+            </option>
+          ))}
+          <option value={0}>毎日少しずつ</option>
+        </select>
+      </label>
       <div className="chips">
         <button type="button" className={`pick ${withFixed ? 'active' : ''}`} onClick={() => onMode(true)}>
           {fixedLabel}を含む
@@ -81,7 +101,11 @@ function MonthlyField(props: {
         </button>
       </div>
       <span className="muted small">
-        {fixed > 0 && (withFixed ? `毎月の${fixedLabel} ${yen(fixed)} も、この額に入っているとして計算します。` : `毎月の${fixedLabel} ${yen(fixed)} は、この額とは別に計算します。`)}
+        {fixed > 0
+          ? withFixed
+            ? `うち${fixedLabel} ${yen(fixed)} はそれぞれ決まった日に、残り ${yen(rest)} を${when}計算します。`
+            : `${fixedLabel} ${yen(fixed)} はそれぞれ決まった日に別で、この ${yen(rest)} を${when}計算します。`
+          : `${yen(rest)} を${when}計算します。`}
         {note}
         {changed && (
           <button type="button" className="btn-text small" onClick={onReset}>
@@ -97,7 +121,7 @@ function MonthlyField(props: {
  * 貯金の見込み：1か月の収入と支出を決めると、グラフと、スライドして選んだ月の「このままいけば ○円」と内訳が出る。
  * 収入・支出それぞれ、固定の収入・固定費を含めた額か、含めない額かを選べる
  */
-export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, budgetExcludesFixed, fixedOut, fixedIn, incomeAverage }: Props) {
+export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, budgetExcludesFixed, fixedOut, fixedIn, incomeAverage, defaultIncomeDay = 25, defaultSpendDay = 31 }: Props) {
   const recordAverage = Math.round(base.perDay * 30); // 記録からの支出の平均（固定費を含まない）
   const [plan, setPlan] = useState<Plan>(loadPlan);
   const update = (p: Plan) => {
@@ -113,15 +137,20 @@ export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, b
   // 収入：固定の収入 + 記録からの固定以外の収入の平均
   const incomeDefault = plan.incomeWithFixed ? fixedIn + incomeAverage : incomeAverage;
   const income = plan.income ?? incomeDefault;
+  // 固定の収入・固定費はいつもその日に入れる。「含む」なら入れた額から固定の分を除いた残りを、決めた日にまとめて（または毎日少しずつ）
+  const incomeDay = plan.incomeDay ?? defaultIncomeDay;
+  const spendDay = plan.spendDay ?? defaultSpendDay;
+  const incomeRest = plan.incomeWithFixed ? Math.max(0, income - fixedIn) : income;
+  const spendRest = spendWithFixed ? Math.max(0, spend - fixedOut) : spend;
   const input = useMemo<ForecastInput>(
     () => ({
       ...base,
-      perDay: spend / 30,
-      incomePerDay: income / 30,
-      skipFixedExpense: spendWithFixed,
-      skipFixedIncome: plan.incomeWithFixed,
+      perDay: spendDay === 0 ? spendRest / 30 : 0,
+      spendMonthly: spendDay === 0 ? undefined : { amount: spendRest, day: spendDay },
+      incomePerDay: incomeDay === 0 ? incomeRest / 30 : 0,
+      incomeMonthly: incomeDay === 0 ? undefined : { amount: incomeRest, day: incomeDay },
     }),
-    [base, spend, income, spendWithFixed, plan.incomeWithFixed],
+    [base, spendRest, incomeRest, spendDay, incomeDay],
   );
   const monthlyNet = (plan.incomeWithFixed ? income : income + fixedIn) - (spendWithFixed ? spend : spend + fixedOut);
   const months = monthEnds(monthOf(input.today), addMonths(monthOf(input.today), 35));
@@ -146,6 +175,9 @@ export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, b
           changed={plan.income !== undefined}
           onChange={(v) => update({ ...plan, income: v })}
           onMode={(w) => w !== plan.incomeWithFixed && update({ ...plan, incomeWithFixed: w, income: plan.income === undefined ? undefined : Math.max(0, plan.income + (w ? fixedIn : -fixedIn)) })}
+          day={incomeDay}
+          dayLabel="入る日"
+          onDay={(d) => update({ ...plan, incomeDay: d })}
           onReset={() => update({ ...plan, income: undefined })}
         />
         <MonthlyField
@@ -158,6 +190,9 @@ export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, b
           changed={plan.spend !== undefined}
           onChange={(v) => update({ ...plan, spend: v, spendWithFixed })}
           onMode={(w) => w !== spendWithFixed && update({ ...plan, spendWithFixed: w, spend: plan.spend === undefined ? undefined : Math.max(0, plan.spend + (w ? fixedOut : -fixedOut)) })}
+          day={spendDay}
+          dayLabel="出る日"
+          onDay={(d) => update({ ...plan, spendDay: d })}
           onReset={() => update({ ...plan, spend: undefined })}
         />
         <div className="monthly-net">
@@ -224,13 +259,13 @@ export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, b
         )}
         {b.income > 0 && (
           <li>
-            <span>収入（1か月 {yen(income)}）</span>
+            <span>収入（固定以外 1か月 {yen(incomeRest)}）</span>
             <b className="plus">+{yen(b.income)}</b>
           </li>
         )}
         {b.daily > 0 && (
           <li>
-            <span>支出（1か月 {yen(spend)}）</span>
+            <span>支出（固定費以外 1か月 {yen(spendRest)}）</span>
             <b className="minus">−{yen(b.daily)}</b>
           </li>
         )}

@@ -6,6 +6,8 @@ type Props = {
   value: string; // 入力中の式（例：1200+380）
   onChange: (v: string) => void;
   type: 'expense' | 'income';
+  /** true のあいだは、最初に数字を押すと今の値を消して打ち直す（演算子なら今の値に続ける） */
+  fresh?: boolean;
 };
 
 const MAX = 24;
@@ -54,7 +56,8 @@ const KEYS: { k: string; cls?: string; label?: string }[] = [
 ];
 
 /** 金額の入力（計算式も使える専用のキーボード） */
-export function AmountPad({ value, onChange, type }: Props) {
+export function AmountPad({ value, onChange, type, fresh }: Props) {
+  const apply = (k: string) => onChange(press(fresh && /^(\d|00)$/.test(k) ? '' : value, k));
   const n = evaluate(value);
   const withOp = hasOperator(value);
 
@@ -68,12 +71,12 @@ export function AmountPad({ value, onChange, type }: Props) {
       if (/^[0-9]$/.test(k) || ['+', '−', '×', '÷', '⌫', '=', 'C'].includes(k)) {
         if (k === 'C' && e.key === 'Escape') return; // Esc はシートを閉じる
         e.preventDefault();
-        onChange(press(value, k));
+        apply(k);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [value, onChange]);
+  }, [value, onChange, fresh]);
 
   return (
     <div className="amount-pad">
@@ -93,7 +96,7 @@ export function AmountPad({ value, onChange, type }: Props) {
             type="button"
             className={`pad-key ${cls ?? ''}`}
             onPointerDown={(e) => e.preventDefault()}
-            onClick={() => onChange(press(value, k))}
+            onClick={() => apply(k)}
             aria-label={k === '⌫' ? '1文字消す' : k === 'C' ? 'ぜんぶ消す' : k}
           >
             {label ?? k}

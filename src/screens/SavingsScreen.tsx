@@ -55,6 +55,8 @@ export function SavingsScreen() {
         fixedOut={fixedOut}
         fixedIn={fixedIn}
         incomeAverage={incomeAverage}
+        defaultIncomeDay={settings.defaultPayDay ?? 25}
+        defaultSpendDay={settings.cardPayDay ?? 31}
       />
 
       {/* 予定の旅行があるときだけ、旅行ごとの見込みを出す（たびメモからの取り込みはホームの下と設定にある） */}
