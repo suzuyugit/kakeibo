@@ -8,6 +8,7 @@ import { PAYMENT_LABEL, PAYMENT_METHODS } from '../lib/labels';
 import { parseYen, yen } from '../lib/money';
 import { addMonths, dateFor, nextMonthFrom, upcomingMonth } from '../lib/recurring';
 import { Sheet } from './Sheet';
+import { CategorySheet } from './CategorySheet';
 import { showToast } from './Toast';
 
 type Props = { recurring?: Recurring; onClose: () => void };
@@ -23,6 +24,7 @@ export function RecurringSheet({ recurring, onClose }: Props) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(recurring?.paymentMethod ?? 'bank');
   const [payFor, setPayFor] = useState<'same' | 'prev'>(recurring?.payFor ?? 'same');
   const [error, setError] = useState('');
+  const [addingCat, setAddingCat] = useState(false);
   const today = todayYmd();
   const picks = forPicker(categories, type);
   const current = categories.find((c) => c.id === categoryId);
@@ -141,7 +143,7 @@ export function RecurringSheet({ recurring, onClose }: Props) {
 
         <div className="field">
           <span className="label">カテゴリ</span>
-          <div className="cat-row cat-wrap" role="radiogroup">
+          <div className="cat-grid" role="radiogroup">
             {picks.map((c) => (
               <button
                 key={c.id}
@@ -155,6 +157,10 @@ export function RecurringSheet({ recurring, onClose }: Props) {
                 <span className="cat-name">{c.name}</span>
               </button>
             ))}
+            <button type="button" className="cat-btn add-tile" onClick={() => setAddingCat(true)}>
+              <span className="cat-icon">＋</span>
+              <span className="cat-name">追加</span>
+            </button>
           </div>
         </div>
 
@@ -179,6 +185,16 @@ export function RecurringSheet({ recurring, onClose }: Props) {
           </button>
         )}
       </div>
+      {addingCat && (
+        <CategorySheet
+          type={type}
+          onClose={() => setAddingCat(false)}
+          onSaved={(id) => {
+            setCategoryId(id);
+            setError('');
+          }}
+        />
+      )}
     </Sheet>
   );
 }

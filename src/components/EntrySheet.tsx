@@ -117,7 +117,7 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
           />
         </label>
 
-        <div className="cat-row" role="radiogroup" aria-label="カテゴリ">
+        <div className="cat-grid" role="radiogroup" aria-label="カテゴリ">
           {picks.map((c) => (
             <button
               key={c.id}

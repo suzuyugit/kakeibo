@@ -2978,10 +2978,6 @@ a.card.trip-card {
   font-size: 24px;
 }
 
-.cat-wrap {
-  flex-wrap: wrap;
-  overflow-x: visible;
-}
 
 .recurring-day {
   display: block;
@@ -3230,4 +3226,25 @@ button.card.trip-card {
   margin-top: 12px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
+}
+
+/* カテゴリを選ぶ欄：全部見えるように折り返す（最後に「＋追加」） */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.cat-grid .cat-btn {
+  width: auto;
+  height: 64px;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.cat-grid .cat-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
