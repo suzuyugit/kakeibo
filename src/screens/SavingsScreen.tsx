@@ -2,7 +2,6 @@ import { SavingsCard } from '../components/SavingsCard';
 import { SavingsAtMonth } from '../components/SavingsAtMonth';
 import { monthOf } from '../lib/recurring';
 import { TripForecastBody } from '../components/TripForecastCard';
-import { LedgerImportButton } from '../components/LedgerImport';
 import { removeTrip } from '../components/ledgerActions';
 import { useRows, useSettings } from '../hooks/useData';
 import { useForecast } from '../hooks/useForecast';
@@ -38,13 +37,16 @@ export function SavingsScreen() {
     <>
       <SavingsCard settings={settings} rows={rows} />
 
-      {fc.forecasts.length === 0 ? (
-        <section className="card">
-          <h3 className="card-title">✈️ 予定の旅行</h3>
-          <p className="muted small">予定の旅行がありません。たびメモで旅行を作って「家計簿に送る」→ ここで取り込むと、出発日までに貯金がいくらあるかが出ます。</p>
-          <LedgerImportButton className="btn-text small" />
-        </section>
-      ) : (
+
+      <SavingsAtMonth
+        input={fc.input}
+        tripMonths={tripMonths}
+        past={past}
+        marks={fc.forecasts.map((f) => ({ date: f.ongoing ? fc.today : f.trip.startDate, name: f.trip.name }))}
+      />
+
+      {/* 予定の旅行があるときだけ、旅行ごとの見込みを出す（たびメモからの取り込みはホームの下と設定にある） */}
+      {fc.forecasts.length > 0 &&
         fc.forecasts.map((f) => (
           <section key={f.trip.tripId} className="card">
             <div className="settle-head">
@@ -56,16 +58,7 @@ export function SavingsScreen() {
               この旅行を家計簿から削除
             </button>
           </section>
-        ))
-      )}
-
-
-      <SavingsAtMonth
-        input={fc.input}
-        tripMonths={tripMonths}
-        past={past}
-        marks={fc.forecasts.map((f) => ({ date: f.ongoing ? fc.today : f.trip.startDate, name: f.trip.name }))}
-      />
+        ))}
 
       <section className="card">
         <h3 className="card-title">見込みの出し方</h3>
@@ -82,7 +75,7 @@ export function SavingsScreen() {
               {fc.daily.basis === 'none' && '（記録が少ないので 0 円で計算しています。見込みは多めに出ています）'}
             </span>
           </li>
-          <li>旅行の分は、予算（なければ見積もり）からもう使った額を引いて、出発日に出ていくとみなします</li>
+          {fc.forecasts.length > 0 && <li>旅行の分は、予算（なければ見積もり）からもう使った額を引いて、出発日に出ていくとみなします</li>}
           {settings.cardPayDay ? (
             <li>カードで払った分は、{settings.cardCloseDay ? `${settings.cardCloseDay}日` : '月末'}締め・翌月{settings.cardPayDay}日の引き落とし日に減ります</li>
           ) : null}
