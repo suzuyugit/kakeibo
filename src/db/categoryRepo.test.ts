@@ -35,4 +35,13 @@ describe('categoryRepo', () => {
     expect(await deleteCategory('ex-06-social')).toBe(true);
     expect(await db.categories.get('ex-06-social')).toBeUndefined();
   });
+
+  it('収入カテゴリに振込日（締め日）を持たせられる。支出には付けない', async () => {
+    const a = await addCategory('income', '○○居酒屋', '🍺', { payDay: 15 });
+    const b = await addCategory('income', '△△ラーメン', '🍜', { payDay: 25, payCloseDay: 20 });
+    const c = await addCategory('expense', '本', '📚', { payDay: 15 });
+    expect(await db.categories.get(a)).toMatchObject({ payDay: 15 });
+    expect(await db.categories.get(b)).toMatchObject({ payDay: 25, payCloseDay: 20 });
+    expect((await db.categories.get(c))!.payDay).toBeUndefined();
+  });
 });

@@ -14,16 +14,18 @@ export function forSettings(cats: Category[], type: EntryType): Category[] {
   return cats.filter((c) => c.type === type).sort((a, b) => a.order - b.order);
 }
 
-export async function addCategory(type: EntryType, name: string, icon: string): Promise<string> {
+export type PayRule = Pick<Category, 'payDay' | 'payCloseDay'>;
+
+export async function addCategory(type: EntryType, name: string, icon: string, pay: PayRule = {}): Promise<string> {
   const id = newId();
   const max = (await db.categories.where('type').equals(type).toArray())
     .filter((c) => c.id !== TRAVEL_CATEGORY)
     .reduce((m, c) => Math.max(m, c.order), 0);
-  await db.categories.add({ id, type, name: name.trim(), icon: icon || '📦', usageCount: 0, order: max + 1 });
+  await db.categories.add({ id, type, name: name.trim(), icon: icon || '📦', usageCount: 0, order: max + 1, ...(type === 'income' && pay.payDay ? pay : {}) });
   return id;
 }
 
-export async function updateCategory(id: string, patch: Partial<Pick<Category, 'name' | 'icon' | 'hidden'>>): Promise<void> {
+export async function updateCategory(id: string, patch: Partial<Pick<Category, 'name' | 'icon' | 'hidden' | 'payDay' | 'payCloseDay'>>): Promise<void> {
   await db.categories.update(id, { ...patch, ...(patch.name !== undefined ? { name: patch.name.trim() } : {}) });
 }
 

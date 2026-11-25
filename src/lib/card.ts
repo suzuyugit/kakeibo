@@ -36,9 +36,9 @@ export function pendingPay(rows: Row[], today: string): { date: string; amount: 
   return [...m.entries()].map(([date, amount]) => ({ date, amount })).sort((a, b) => (a.date < b.date ? -1 : 1));
 }
 
-/** 働いた日（記録の日）から、翌月の決めた日の振込日 */
-export function nextMonthPayDate(date: string, payDay: number): string {
-  return dateFor(addMonths(monthOf(date), 1), payDay);
+/** 働いた日（記録の日）から振込日：締め日（なければ月末）で締めた月の、翌月の決めた日（カードの引き落としと同じ数え方） */
+export function nextMonthPayDate(date: string, payDay: number, closeDay?: number): string {
+  return withdrawalDate(date, payDay, closeDay);
 }
 
 /** 今日より後に引き落とされるカードの分（引き落とし日ごと、日付の順） */

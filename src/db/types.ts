@@ -26,6 +26,8 @@ export type Category = {
   icon: string;
   monthlyBudget?: number; // 支出カテゴリだけ
   hidden?: boolean;
+  payDay?: number; // 収入カテゴリだけ：翌月のこの日に振り込まれる（例：○○居酒屋は15日）。なければその日に入る
+  payCloseDay?: number; // 収入カテゴリだけ：締め日（1〜28）。なければ月末締め
   usageCount: number;
   order: number;
 };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entry } from '../db/types';
 import type { Row } from './aggregate';
-import { moneyDate, pendingCard, withdrawalDate } from './card';
+import { moneyDate, nextMonthPayDate, pendingCard, pendingPay, withdrawalDate } from './card';
 import { projectedAt } from './forecast';
 import { savingsNow } from './savings';
 
@@ -51,5 +51,16 @@ describe('カードの引き落とし', () => {
     expect(projectedAt(input, '2026-12-26')).toBe(50000);
     expect(projectedAt(input, '2026-12-27')).toBe(46000);
     expect(projectedAt(input, '2027-01-31')).toBe(45600);
+  });
+
+  it('給料の振込日（バイト先ごと）', () => {
+    expect(nextMonthPayDate('2026-11-25', 15)).toBe('2026-12-15'); // 月末締め・翌月15日
+    expect(nextMonthPayDate('2026-11-25', 25, 20)).toBe('2027-01-25'); // 20日締め・翌月25日
+    expect(nextMonthPayDate('2026-11-20', 25, 20)).toBe('2026-12-25');
+    const r = { ...row('2026-11-25', 8000, undefined), type: 'income' as const };
+    r.entry = { ...r.entry!, payDate: '2026-12-15' };
+    expect(moneyDate(r, {})).toBe('2026-12-15');
+    expect(pendingPay([r], '2026-11-30')).toEqual([{ date: '2026-12-15', amount: 8000 }]);
+    expect(pendingPay([r], '2026-12-15')).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import type { Entry, EntryType, PaymentMethod } from '../db/types';
 import { deleteEntry, lastPaymentMethod, restoreEntry, saveEntry, validateEntry } from '../db/entryRepo';
 import { forPicker } from '../db/categoryRepo';
 import { useCategories, useSettings } from '../hooks/useData';
+import { db } from '../db/db';
 import { nextMonthPayDate, withdrawalDate } from '../lib/card';
 import { formatMd, parseYmd, todayYmd, toYmd } from '../lib/date';
 import { yen } from '../lib/money';
@@ -19,27 +20,6 @@ type Props = {
   initialDate?: string;
   onClose: () => void;
 };
-
-const LAST_PAY_KEY = 'kakeibo.lastPay';
-
-/** 前回の収入の入り方（翌月振込か、その日） */
-function loadLastPay(): { deferred: boolean; day: number } {
-  try {
-    const v = JSON.parse(localStorage.getItem(LAST_PAY_KEY) ?? 'null');
-    if (v && typeof v.deferred === 'boolean' && v.day >= 1 && v.day <= 31) return v;
-  } catch {
-    // 読めなければ初期値
-  }
-  return { deferred: false, day: 25 };
-}
-
-function saveLastPay(v: { deferred: boolean; day: number }) {
-  try {
-    localStorage.setItem(LAST_PAY_KEY, JSON.stringify(v));
-  } catch {
-    // 覚えられなくても動作に影響はない
-  }
-}
 
 function yesterdayYmd(): string {
   const d = parseYmd(todayYmd());
@@ -58,10 +38,25 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
   const [date, setDate] = useState(entry?.date ?? initialDate ?? todayYmd());
   const [memo, setMemo] = useState(entry?.memo ?? '');
   // 収入：その日に入るか、翌月の決めた日に振り込まれるか（給料など）。前回の選び方を覚えておく
-  const lastPay = loadLastPay();
-  const [deferred, setDeferred] = useState(entry ? !!entry.payDate : lastPay.deferred);
-  const [payDay, setPayDay] = useState(entry?.payDate ? Number(entry.payDate.slice(8)) : lastPay.day);
-  const payDate = nextMonthPayDate(date, payDay);
+  // カテゴリに振込日が決めてあれば、そのカテゴリを選んだときに入れる
+  const entryCat = entry ? categories.find((c) => c.id === entry.categoryId) : undefined;
+  const [deferred, setDeferred] = useState(!!entry?.payDate);
+  const [payDay, setPayDay] = useState(entry?.payDate ? Number(entry.payDate.slice(8)) : 25);
+  const [payClose, setPayClose] = useState<number | undefined>(entryCat?.payCloseDay);
+  const payDate = nextMonthPayDate(date, payDay, payClose);
+  const applyPayRule = (id: string, cats = categories) => {
+    const c = cats.find((x) => x.id === id);
+    if (!c || c.type !== 'income') return;
+    if (c.payDay) {
+      setDeferred(true);
+      setPayDay(c.payDay);
+      setPayClose(c.payCloseDay);
+    } else if (categories.find((x) => x.id === categoryId)?.payDay) {
+      // 振込日のあるカテゴリから、ないカテゴリに変えたときだけ戻す（自分で選んだ「翌月に振込」は残す）
+      setDeferred(false);
+      setPayClose(undefined);
+    }
+  };
   const [error, setError] = useState('');
   const [addingCat, setAddingCat] = useState(false);
 
@@ -93,7 +88,6 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
     const msg = Number.isNaN(amountNum) ? '計算式が正しくありません' : amountNum !== undefined && amountNum <= 0 ? '金額が0円以下です' : validateEntry(input);
     if (msg) return setError(msg);
     await saveEntry(input, entry?.id);
-    if (type === 'income') saveLastPay({ deferred, day: payDay });
     showToast(entry ? '保存しました' : `${type === 'expense' ? '支出' : '収入'} ${yen(input.amount)} を記録しました`);
     onClose();
   };
@@ -189,11 +183,13 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
               className={`cat-btn ${c.id === categoryId ? 'active' : ''}`}
               onClick={() => {
                 setCategoryId(c.id);
+                applyPayRule(c.id);
                 setError('');
               }}
             >
               <span className="cat-icon">{c.icon}</span>
               <span className="cat-name">{c.name}</span>
+              {c.type === 'income' && c.payDay && <span className="cat-sub">翌月{c.payDay}日</span>}
             </button>
           ))}
           <button type="button" className="cat-btn add-tile" onClick={() => setAddingCat(true)}>
@@ -215,6 +211,14 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
             </div>
             {deferred && (
               <div className="pay-row">
+                <select value={payClose ?? 0} onChange={(e) => setPayClose(Number(e.target.value) || undefined)} aria-label="締め日">
+                  <option value={0}>月末締め</option>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                    <option key={d} value={d}>
+                      {d}日締め
+                    </option>
+                  ))}
+                </select>
                 <span>翌月</span>
                 <select value={payDay} onChange={(e) => setPayDay(Number(e.target.value))} aria-label="振込の日">
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
@@ -227,6 +231,9 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
               </div>
             )}
             {deferred && <span className="muted small">カレンダーには働いた日（{formatMd(date)}）に出て、貯金は振込の日に増えます。</span>}
+            {deferred && !categories.find((c) => c.id === categoryId)?.payDay && (
+              <span className="muted small">いつも同じ振込日なら、カテゴリの編集で振込日を決めておくと毎回自動で入ります。</span>
+            )}
           </div>
         )}
 
@@ -272,6 +279,8 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
           onClose={() => setAddingCat(false)}
           onSaved={(id) => {
             setCategoryId(id);
+            // 足したばかりのカテゴリは一覧にまだないので、DB から読んで振込日を入れる
+            void db.categories.get(id).then((c) => c && applyPayRule(id, [c]));
             setError('');
           }}
         />
