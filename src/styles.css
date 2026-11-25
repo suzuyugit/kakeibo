@@ -3692,3 +3692,29 @@ button.card.trip-card {
   font-size: 20px;
   font-weight: 700;
 }
+
+.spend-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spend-field + .spend-field {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.monthly-net {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.monthly-net b {
+  font-size: 20px;
+}

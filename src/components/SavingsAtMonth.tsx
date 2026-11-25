@@ -14,45 +14,132 @@ type Props = {
   budget?: number;
   /** 毎月の固定費の合計 */
   fixedOut: number;
+  /** 毎月の固定の収入の合計 */
+  fixedIn: number;
+  /** 記録からの、固定以外の収入の1か月あたりの平均 */
+  incomeAverage: number;
 };
 
-const SPEND_KEY = 'kakeibo.forecastMonthlySpend';
+const PLAN_KEY = 'kakeibo.forecastPlan';
 
-function loadSpend(): number | undefined {
+/** 見込みに使う1か月の収入と支出（自分で変えた分だけ。なければ初期値） */
+type Plan = { income?: number; incomeWithFixed: boolean; spend?: number; spendWithFixed?: boolean };
+
+function loadPlan(): Plan {
   try {
-    const v = Number(localStorage.getItem(SPEND_KEY));
-    return Number.isFinite(v) && v > 0 ? v : undefined;
+    const v = JSON.parse(localStorage.getItem(PLAN_KEY) ?? 'null');
+    if (v && typeof v === 'object') return { incomeWithFixed: v.incomeWithFixed !== false, income: v.income, spend: v.spend, spendWithFixed: v.spendWithFixed };
   } catch {
-    return undefined;
+    // 読めなければ初期値
   }
+  return { incomeWithFixed: true };
 }
 
-function saveSpend(v: number | undefined) {
+function savePlan(p: Plan) {
   try {
-    if (v === undefined) localStorage.removeItem(SPEND_KEY);
-    else localStorage.setItem(SPEND_KEY, String(v));
+    localStorage.setItem(PLAN_KEY, JSON.stringify(p));
   } catch {
     // 覚えられなくてもよい
   }
 }
 
+/** 1か月の額の欄（−1万・+1万・直接入力）と「固定を含む／含まない」 */
+function MonthlyField(props: {
+  label: string;
+  value: number;
+  withFixed: boolean;
+  fixed: number;
+  fixedLabel: string;
+  note: string;
+  changed: boolean;
+  onChange: (v: number) => void;
+  onMode: (withFixed: boolean) => void;
+  onReset: () => void;
+}) {
+  const { label, value, withFixed, fixed, fixedLabel, note, changed, onChange, onMode, onReset } = props;
+  const [text, setText] = useState<string | null>(null);
+  return (
+    <div className="spend-field">
+      <span className="label">{label}</span>
+      <div className="spend-row">
+        <button type="button" className="icon-btn" onClick={() => onChange(Math.max(0, value - 10000))} aria-label={`${label}を1万円へらす`}>
+          −1万
+        </button>
+        <label className="spend-input">
+          <input
+            inputMode="numeric"
+            value={text ?? value.toLocaleString('ja-JP')}
+            onChange={(e) => setText(e.target.value)}
+            onFocus={(e) => {
+              // カンマを外して全部選ぶ（打つと置き換わる）
+              const el = e.currentTarget;
+              setText(String(value));
+              requestAnimationFrame(() => el.select());
+            }}
+            onBlur={() => {
+              const n = parseYen(text ?? '');
+              setText(null);
+              if (n !== undefined && !Number.isNaN(n)) onChange(n);
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            aria-label={label}
+          />
+          <span>円</span>
+        </label>
+        <button type="button" className="icon-btn" onClick={() => onChange(value + 10000)} aria-label={`${label}を1万円ふやす`}>
+          +1万
+        </button>
+      </div>
+      <div className="chips">
+        <button type="button" className={`pick ${withFixed ? 'active' : ''}`} onClick={() => onMode(true)}>
+          {fixedLabel}を含む
+        </button>
+        <button type="button" className={`pick ${!withFixed ? 'active' : ''}`} onClick={() => onMode(false)}>
+          含まない
+        </button>
+      </div>
+      <span className="muted small">
+        {fixed > 0 && (withFixed ? `毎月の${fixedLabel} ${yen(fixed)} も、この額に入っているとして計算します。` : `毎月の${fixedLabel} ${yen(fixed)} は、この額とは別に計算します。`)}
+        {note}
+        {changed && (
+          <button type="button" className="btn-text small" onClick={onReset}>
+            初めの額に戻す
+          </button>
+        )}
+      </span>
+    </div>
+  );
+}
+
 /**
- * 貯金の見込み：グラフと、スライドして選んだ月の「このままいけば ○円」と内訳。
- * 「1か月に使う額」を変えると、その額で使ったとしたときの見込みに変わる（このカードの中だけ）
+ * 貯金の見込み：1か月の収入と支出を決めると、グラフと、スライドして選んだ月の「このままいけば ○円」と内訳が出る。
+ * 収入・支出それぞれ、固定の収入・固定費を含めた額か、含めない額かを選べる
  */
-export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, fixedOut }: Props) {
-  // 初期値：月の予算 − 固定費（予算がなければ記録からの平均）。固定費は見込みで別に引くので、二重に引かないように除く
-  const recordAverage = Math.round(base.perDay * 30);
-  const average = budget !== undefined ? Math.max(0, budget - fixedOut) : recordAverage;
-  const [spend, setSpend] = useState<number | undefined>(loadSpend);
-  const [spendText, setSpendText] = useState(() => (spend ?? average).toLocaleString('ja-JP'));
-  const input = useMemo(() => (spend !== undefined ? { ...base, perDay: spend / 30 } : base), [base, spend]);
-  const changeSpend = (v: number | undefined) => {
-    setSpend(v);
-    saveSpend(v);
-    setSpendText((v ?? average).toLocaleString('ja-JP'));
+export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, fixedOut, fixedIn, incomeAverage }: Props) {
+  const recordAverage = Math.round(base.perDay * 30); // 記録からの支出の平均（固定費を含まない）
+  const [plan, setPlan] = useState<Plan>(loadPlan);
+  const update = (p: Plan) => {
+    setPlan(p);
+    savePlan(p);
   };
-  const step = (d: number) => changeSpend(Math.max(0, (spend ?? average) + d));
+  // 支出：予算を決めていれば予算（固定費を含む）、なければ記録の平均（含まない）
+  const spendWithFixed = plan.spendWithFixed ?? budget !== undefined;
+  const spendDefault = spendWithFixed ? (budget ?? recordAverage + fixedOut) : budget !== undefined ? Math.max(0, budget - fixedOut) : recordAverage;
+  const spend = plan.spend ?? spendDefault;
+  // 収入：固定の収入 + 記録からの固定以外の収入の平均
+  const incomeDefault = plan.incomeWithFixed ? fixedIn + incomeAverage : incomeAverage;
+  const income = plan.income ?? incomeDefault;
+  const input = useMemo<ForecastInput>(
+    () => ({
+      ...base,
+      perDay: spend / 30,
+      incomePerDay: income / 30,
+      skipFixedExpense: spendWithFixed,
+      skipFixedIncome: plan.incomeWithFixed,
+    }),
+    [base, spend, income, spendWithFixed, plan.incomeWithFixed],
+  );
+  const monthlyNet = (plan.incomeWithFixed ? income : income + fixedIn) - (spendWithFixed ? spend : spend + fixedOut);
   const months = monthEnds(monthOf(input.today), addMonths(monthOf(input.today), 35));
   const [idx, setIdx] = useState(1); // 0 = 今月
   const month = months[idx].month;
@@ -65,44 +152,36 @@ export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, f
     <section className="card">
       <h3 className="card-title">貯金の見込み</h3>
       <div className="spend-box">
-        <span className="label">ふだん1か月に使う額</span>
-        <div className="spend-row">
-          <button type="button" className="icon-btn" onClick={() => step(-10000)} aria-label="1万円へらす">
-            −1万
-          </button>
-          <label className="spend-input">
-            <input
-              inputMode="numeric"
-              value={spendText}
-              onChange={(e) => setSpendText(e.target.value)}
-              onFocus={(e) => setSpendText(e.target.value.replace(/,/g, ''))}
-              onBlur={() => {
-                const n = parseYen(spendText);
-                if (n === undefined || Number.isNaN(n)) setSpendText((spend ?? average).toLocaleString('ja-JP'));
-                else changeSpend(n === average ? undefined : n);
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-              aria-label="ふだん1か月に使う額"
-            />
-            <span>円</span>
-          </label>
-          <button type="button" className="icon-btn" onClick={() => step(10000)} aria-label="1万円ふやす">
-            +1万
-          </button>
+        <MonthlyField
+          label="1か月の収入"
+          value={income}
+          withFixed={plan.incomeWithFixed}
+          fixed={fixedIn}
+          fixedLabel="固定の収入"
+          note={incomeAverage > 0 ? `（初めの額は、固定以外の収入の平均 約${yen(incomeAverage)} を足した額）` : ''}
+          changed={plan.income !== undefined}
+          onChange={(v) => update({ ...plan, income: v })}
+          onMode={(w) => w !== plan.incomeWithFixed && update({ ...plan, incomeWithFixed: w, income: plan.income === undefined ? undefined : Math.max(0, plan.income + (w ? fixedIn : -fixedIn)) })}
+          onReset={() => update({ ...plan, income: undefined })}
+        />
+        <MonthlyField
+          label="1か月の支出"
+          value={spend}
+          withFixed={spendWithFixed}
+          fixed={fixedOut}
+          fixedLabel="固定費"
+          note={budget !== undefined ? `（初めの額は月の予算 ${yen(budget)} から）` : '（初めの額は、これまでの記録の平均から）'}
+          changed={plan.spend !== undefined}
+          onChange={(v) => update({ ...plan, spend: v, spendWithFixed })}
+          onMode={(w) => w !== spendWithFixed && update({ ...plan, spendWithFixed: w, spend: plan.spend === undefined ? undefined : Math.max(0, plan.spend + (w ? fixedOut : -fixedOut)) })}
+          onReset={() => update({ ...plan, spend: undefined })}
+        />
+        <div className="monthly-net">
+          <span>毎月</span>
+          <b className={monthlyNet >= 0 ? 'plus' : 'minus'}>{signedYen(monthlyNet)}</b>
+          <span>{monthlyNet >= 0 ? 'ずつ貯まる計算' : 'ずつ減る計算'}</span>
+          <span className="muted small">（旅行・カードの引き落とし・振込予定は別）</span>
         </div>
-        <span className="muted small">
-          {budget !== undefined ? `月の予算 ${yen(budget)} − 固定費 ${yen(fixedOut)} = ${yen(average)}` : `月の予算を決めていないので、これまでの記録の平均（約 ${yen(recordAverage)}）`}
-          {spend === undefined ? (
-            <>。変えると「これだけ使ったら」の見込みになります。</>
-          ) : (
-            <>
-              。
-              <button type="button" className="btn-text small" onClick={() => changeSpend(undefined)}>
-                {budget !== undefined ? '予算の額に戻す' : '記録の平均に戻す'}
-              </button>
-            </>
-          )}
-        </span>
       </div>
       <SavingsChart past={past} input={input} marks={marks} focus={end} />
       <p className="muted small slider-help">下のつまみを左右にスライドすると、その月の終わりの貯金の見込みが出ます。</p>
@@ -159,9 +238,15 @@ export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, f
             <b className="minus">−{yen(b.fixedOut)}</b>
           </li>
         )}
+        {b.income > 0 && (
+          <li>
+            <span>収入（1か月 {yen(income)}）</span>
+            <b className="plus">+{yen(b.income)}</b>
+          </li>
+        )}
         {b.daily > 0 && (
           <li>
-            <span>ふだんの支出（1か月 {yen(spend ?? average)}）</span>
+            <span>支出（1か月 {yen(spend)}）</span>
             <b className="minus">−{yen(b.daily)}</b>
           </li>
         )}

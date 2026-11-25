@@ -67,58 +67,64 @@ export type ForecastInput = {
   savings: number; // 今の貯金
   today: string;
   recurrings: Recurring[];
-  perDay: number;
+  perDay: number; // 1日あたりの支出（固定費は含まない。skipFixedExpense なら固定費も含む）
   trips: LedgerTrip[];
   /** これから引き落とされるカードの分（もう使った分） */
   cardOut?: { date: string; amount: number }[];
   /** これから振り込まれる収入（もう記録した給料など） */
   payIn?: { date: string; amount: number }[];
+  /** 1日あたりの収入（「1か月の収入」を入れたとき。skipFixedIncome なら固定の収入も含む） */
+  incomePerDay?: number;
+  /** 固定の収入を別に足さない（収入の額に含めたとき） */
+  skipFixedIncome?: boolean;
+  /** 固定費を別に引かない（支出の額に含めたとき） */
+  skipFixedExpense?: boolean;
 };
-
-/** その日の終わりの貯金の見込み（今日より後の日）。その日に出ていく旅行の分は、引く前（includeTripsOn=false）か後か */
-export function projectedAt(input: ForecastInput, date: string, includeTripsOn = true): number {
-  const { savings, today, recurrings, perDay, trips } = input;
-  if (date <= today) return savings;
-  const fixed = fixedBetween(recurrings, today, date).reduce((a, f) => a + f.signed, 0);
-  const card = (input.cardOut ?? []).filter((c) => c.date > today && c.date <= date).reduce((a, c) => a + c.amount, 0);
-  const pay = (input.payIn ?? []).filter((c) => c.date > today && c.date <= date).reduce((a, c) => a + c.amount, 0);
-  const days = dayCount(today, date) - 1;
-  const tripsOut = trips
-    .filter((t) => t.endDate >= today)
-    .filter((t) => {
-      const d = outDate(t, today);
-      return includeTripsOn ? d <= date : d < date;
-    })
-    .reduce((a, t) => a + tripNeed(t), 0);
-  return Math.round(savings + fixed + pay - card - perDay * days - tripsOut);
-}
 
 export type Breakdown = {
   start: number; // 今の貯金
-  fixedIn: number; // 固定の収入
-  fixedOut: number; // 固定費
-  daily: number; // ふだんの支出（1日あたり × 日数）
+  fixedIn: number; // 固定の収入（別に足すとき）
+  fixedOut: number; // 固定費（別に引くとき）
+  income: number; // 収入（1日あたり × 日数）
+  daily: number; // 支出（1日あたり × 日数）
   card: number; // カードの引き落とし（もう使った分）
   payIn: number; // あとで振り込まれる収入（もう記録した分）
   trips: { name: string; amount: number }[]; // 出ていく旅行
   total: number; // その日の終わりの見込み
 };
 
-/** その日の見込みの内訳（projectedAt と同じ計算） */
-export function breakdownAt(input: ForecastInput, date: string): Breakdown {
+/** その日の見込みの内訳。旅行の分は、その日に出ていくものを含めるか（includeTripsOn） */
+function parts(input: ForecastInput, date: string, includeTripsOn: boolean): Breakdown {
   const { savings, today, recurrings, perDay, trips } = input;
-  if (date <= today) return { start: savings, fixedIn: 0, fixedOut: 0, daily: 0, card: 0, payIn: 0, trips: [], total: savings };
+  if (date <= today) return { start: savings, fixedIn: 0, fixedOut: 0, income: 0, daily: 0, card: 0, payIn: 0, trips: [], total: savings };
   const fixed = fixedBetween(recurrings, today, date);
-  const fixedIn = fixed.filter((f) => f.signed > 0).reduce((a, f) => a + f.signed, 0);
-  const fixedOut = -fixed.filter((f) => f.signed < 0).reduce((a, f) => a + f.signed, 0);
-  const daily = Math.round(perDay * (dayCount(today, date) - 1));
+  const fixedIn = input.skipFixedIncome ? 0 : fixed.filter((f) => f.signed > 0).reduce((a, f) => a + f.signed, 0);
+  const fixedOut = input.skipFixedExpense ? 0 : -fixed.filter((f) => f.signed < 0).reduce((a, f) => a + f.signed, 0);
+  const days = dayCount(today, date) - 1;
+  const income = Math.round((input.incomePerDay ?? 0) * days);
+  const daily = Math.round(perDay * days);
   const card = (input.cardOut ?? []).filter((c) => c.date > today && c.date <= date).reduce((a, c) => a + c.amount, 0);
   const payIn = (input.payIn ?? []).filter((c) => c.date > today && c.date <= date).reduce((a, c) => a + c.amount, 0);
   const out = trips
-    .filter((t) => t.endDate >= today && outDate(t, today) <= date)
+    .filter((t) => t.endDate >= today)
+    .filter((t) => {
+      const d = outDate(t, today);
+      return includeTripsOn ? d <= date : d < date;
+    })
     .map((t) => ({ name: t.name, amount: tripNeed(t) }))
     .filter((t) => t.amount > 0);
-  return { start: savings, fixedIn, fixedOut, daily, card, payIn, trips: out, total: projectedAt(input, date) };
+  const total = savings + fixedIn - fixedOut + income - daily + payIn - card - out.reduce((a, t) => a + t.amount, 0);
+  return { start: savings, fixedIn, fixedOut, income, daily, card, payIn, trips: out, total: Math.round(total) };
+}
+
+/** その日の終わりの貯金の見込み（今日より後の日）。その日に出ていく旅行の分は、引く前（includeTripsOn=false）か後か */
+export function projectedAt(input: ForecastInput, date: string, includeTripsOn = true): number {
+  return parts(input, date, includeTripsOn).total;
+}
+
+/** その日の見込みの内訳（projectedAt と同じ計算） */
+export function breakdownAt(input: ForecastInput, date: string): Breakdown {
+  return parts(input, date, true);
 }
 
 export type TripForecast = {

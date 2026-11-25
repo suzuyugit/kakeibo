@@ -81,9 +81,27 @@ describe('任意の日の見込みの内訳', () => {
       cardOut: [{ date: '2026-12-10', amount: 4000 }],
     };
     const b = breakdownAt(input, '2026-12-31');
-    expect(b).toMatchObject({ fixedIn: 50000, fixedOut: 16000, daily: 36000, card: 4000, trips: [{ name: '京都', amount: 30000 }] });
+    expect(b).toMatchObject({ fixedIn: 50000, fixedOut: 16000, income: 0, daily: 36000, card: 4000, trips: [{ name: '京都', amount: 30000 }] });
     expect(b.total).toBe(100000 + 50000 - 16000 - 36000 - 4000 - 30000);
     expect(b.total).toBe(projectedAt(input, '2026-12-31'));
+  });
+});
+
+describe('1か月の収入と支出を決めたときの見込み', () => {
+  const base = {
+    savings: 100000, today: '2026-11-25', perDay: 0, trips: [],
+    recurrings: [rec({ amount: 50000, dayOfMonth: 25 }), rec({ id: 'x', type: 'expense', amount: 20000, dayOfMonth: 27 })],
+  };
+  // 11/26〜12/25 は 30日。固定の収入 12/25、固定費 11/27
+  it('固定を含まない：収入・支出に足して、固定は別に足し引きする', () => {
+    const b = breakdownAt({ ...base, incomePerDay: 30000 / 30, perDay: 60000 / 30 }, '2026-12-25');
+    expect(b).toMatchObject({ fixedIn: 50000, fixedOut: 20000, income: 30000, daily: 60000 });
+    expect(b.total).toBe(100000 + 50000 - 20000 + 30000 - 60000);
+  });
+  it('固定を含む：固定は別に足し引きしない', () => {
+    const b = breakdownAt({ ...base, incomePerDay: 80000 / 30, perDay: 60000 / 30, skipFixedIncome: true, skipFixedExpense: true }, '2026-12-25');
+    expect(b).toMatchObject({ fixedIn: 0, fixedOut: 0, income: 80000, daily: 60000 });
+    expect(b.total).toBe(120000);
   });
 });
 

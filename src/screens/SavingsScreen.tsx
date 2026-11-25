@@ -6,7 +6,7 @@ import { removeTrip } from '../components/ledgerActions';
 import { useRows, useSettings } from '../hooks/useData';
 import { useForecast } from '../hooks/useForecast';
 import { yen } from '../lib/money';
-import { pastSeries } from '../lib/forecast';
+import { addDays, pastSeries } from '../lib/forecast';
 import { countsTowardSavings } from '../lib/savings';
 import { moneyDate } from '../lib/card';
 import { navigate } from '../router';
@@ -31,6 +31,13 @@ export function SavingsScreen() {
     tripMonths.set(m, [...(tripMonths.get(m) ?? []), f.trip.name]);
   }
   const fixedIn = fc.recurrings.filter((r) => r.type === 'income' && isActive(r, fc.today)).reduce((a, r) => a + r.amount, 0);
+  // 固定以外の収入の1か月あたりの平均（支出と同じく、記録が30日分以上あるときだけ）
+  const incomeAverage = (() => {
+    if (fc.daily.basis !== 'actual') return 0;
+    const from = addDays(fc.today, -(fc.daily.days - 1));
+    const sum = rows.filter((r) => r.type === 'income' && r.entry && !r.entry.recurringId && r.date >= from && r.date <= fc.today).reduce((a, r) => a + r.amount, 0);
+    return Math.round((sum / fc.daily.days) * 30);
+  })();
   const fixedOut = fc.recurrings.filter((r) => r.type === 'expense' && isActive(r, fc.today)).reduce((a, r) => a + r.amount, 0);
 
   return (
@@ -45,6 +52,8 @@ export function SavingsScreen() {
         marks={fc.forecasts.map((f) => ({ date: f.ongoing ? fc.today : f.trip.startDate, name: f.trip.name }))}
         budget={settings.monthlyBudget}
         fixedOut={fixedOut}
+        fixedIn={fixedIn}
+        incomeAverage={incomeAverage}
       />
 
       {/* 予定の旅行があるときだけ、旅行ごとの見込みを出す（たびメモからの取り込みはホームの下と設定にある） */}
