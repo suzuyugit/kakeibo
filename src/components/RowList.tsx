@@ -14,10 +14,12 @@ type Props = {
   onEdit: (e: Entry) => void;
   /** 行に日付も出す（いろいろな日が混ざる一覧） */
   showDate?: boolean;
+  /** 収入を「+」（赤）、支出を「−」（青）で出す（カレンダー） */
+  signColors?: boolean;
 };
 
 /** 記録の一覧。タップで編集、左にスライドで削除（元に戻せる）。旅行の支出はタップで詳しく見る（直すのはたびメモ） */
-export function RowList({ rows, onEdit, showDate }: Props) {
+export function RowList({ rows, onEdit, showDate, signColors }: Props) {
   const [tripRow, setTripRow] = useState<Row | null>(null);
   return (
     <>
@@ -29,7 +31,7 @@ export function RowList({ rows, onEdit, showDate }: Props) {
             <span className="expense-main">
               <span className="expense-title">
                 {r.title}
-                {r.fixed && <span className="tag">固定</span>}
+                {r.scheduled ? <span className="tag tag-plan">予定</span> : r.fixed && <span className="tag">固定</span>}
               </span>
               {(showDate || r.sub || r.trip) && (
                 <span className="expense-sub">
@@ -37,12 +39,26 @@ export function RowList({ rows, onEdit, showDate }: Props) {
                 </span>
               )}
             </span>
-            <span className={`expense-amount ${r.type === 'income' ? 'income' : ''}`}>
-              {r.type === 'income' ? '+' : ''}
-              {yen(r.amount)}
-            </span>
+            {signColors ? (
+              <span className={`expense-amount ${r.type === 'income' ? 'plus' : 'minus'}`}>
+                {r.type === 'income' ? '+' : '−'}
+                {yen(r.amount)}
+              </span>
+            ) : (
+              <span className={`expense-amount ${r.type === 'income' ? 'income' : ''}`}>
+                {r.type === 'income' ? '+' : ''}
+                {yen(r.amount)}
+              </span>
+            )}
           </>
         );
+        if (r.scheduled) {
+          return (
+            <li key={r.key}>
+              <div className="expense-row scheduled-row">{body}</div>
+            </li>
+          );
+        }
         if (r.trip) {
           return (
             <li key={r.key}>

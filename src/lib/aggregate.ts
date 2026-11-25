@@ -1,5 +1,6 @@
 // 集計（記録と、たびメモから取り込んだ旅行の支出を混ぜる）
-import type { Category, Entry, LedgerEntry, LedgerTrip } from '../db/types';
+import type { Category, Entry, LedgerEntry, LedgerTrip, Recurring } from '../db/types';
+import { addMonths, dateFor, recurringMemo } from './recurring';
 import { TRAVEL_CATEGORY } from '../db/db';
 import { inPeriod, type Period } from './period';
 
@@ -15,6 +16,7 @@ export type Row = {
   entry?: Entry; // 家計簿の記録（編集できる）
   trip?: { tripId: string; name: string; categoryName: string; categoryIcon: string; paymentMethod?: LedgerEntry['paymentMethod'] }; // 旅行の支出（たびメモで直す）
   fixed?: boolean; // 固定から自動で入った
+  scheduled?: boolean; // これから固定で入る予定（まだ記録はない）
 };
 
 export function toRows(entries: Entry[], tripEntries: LedgerEntry[], trips: LedgerTrip[], categories: Category[]): Row[] {
@@ -99,4 +101,35 @@ export function travelByCategory(rows: Row[], p: Pick<Period, 'start' | 'end'>):
     m.set(k, cur);
   }
   return [...m.values()].sort((a, b) => b.amount - a.amount);
+}
+
+/**
+ * これから固定で入る予定（今日より後で、まだ記録がないもの）を、from〜to の一覧の行にする。
+ * 止めた月・消した月・もう記録がある月は出さない
+ */
+export function scheduledRows(recurrings: Recurring[], entries: Entry[], categories: Category[], from: string, to: string, today: string): Row[] {
+  const made = new Set(entries.filter((e) => e.recurringId).map((e) => `${e.recurringId}|${e.recurringMonth}`));
+  const cat = new Map(categories.map((c) => [c.id, c]));
+  const out: Row[] = [];
+  for (const r of recurrings) {
+    for (let m = r.startMonth < from.slice(0, 7) ? from.slice(0, 7) : r.startMonth; m <= to.slice(0, 7); m = addMonths(m, 1)) {
+      if (r.endMonth && m > r.endMonth) break;
+      if (r.skippedMonths.includes(m) || made.has(`${r.id}|${m}`)) continue;
+      const date = dateFor(m, r.dayOfMonth);
+      if (date <= today || date < from || date > to) continue;
+      const c = cat.get(r.categoryId);
+      out.push({
+        key: `sch-${r.id}-${m}`,
+        date,
+        type: r.type,
+        amount: r.amount,
+        icon: c?.icon ?? '🔁',
+        title: c?.name ?? r.name,
+        sub: recurringMemo(r, m),
+        fixed: true,
+        scheduled: true,
+      });
+    }
+  }
+  return out;
 }

@@ -13,7 +13,7 @@ export function SavingsCard({ settings, rows }: { settings: Settings; rows: Row[
   const [editing, setEditing] = useState(false);
   const today = todayYmd();
   const s = savingsNow(settings, rows, today);
-  const card = pendingCard(rows, settings.cardPayDay, today);
+  const card = pendingCard(rows, settings, today);
 
   if (!s) {
     return (

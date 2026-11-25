@@ -7,6 +7,8 @@
   --primary: #15803d;
   --primary-weak: #e8f5ec;
   --income: #15803d;
+  --plus: #dc2626;
+  --minus: #2563eb;
   --danger: #c2410c;
   --danger-weak: #fff1ea;
   --ongoing: #0f766e;
@@ -29,6 +31,8 @@
     --primary: #4ade80;
     --primary-weak: #13301d;
     --income: #4ade80;
+    --plus: #f87171;
+    --minus: #60a5fa;
     --danger: #fb923c;
     --danger-weak: #3a2216;
     --ongoing: #2dd4bf;
@@ -3256,4 +3260,50 @@ button.card.trip-card {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* カレンダー：収入は「+」赤、支出は「−」青 */
+.plus,
+.expense-amount.plus {
+  color: var(--plus);
+}
+
+.minus,
+.expense-amount.minus {
+  color: var(--minus);
+}
+
+.expense-amount.plus,
+.expense-amount.minus {
+  font-weight: 700;
+}
+
+.cal-amount.plus,
+.cal-amount.minus {
+  line-height: 1.15;
+  font-weight: 600;
+}
+
+.cal-cell.future .cal-amount {
+  opacity: 0.7;
+}
+
+.scheduled-row {
+  opacity: 0.75;
+  cursor: default;
+}
+
+.tag-plan {
+  background: transparent;
+  border: 1px dashed var(--muted);
+  color: var(--muted);
+}
+
+/* たびメモからの取り込み（サブ機能）：ホームのいちばん下に小さく */
+.sub-feature {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0 8px;
 }

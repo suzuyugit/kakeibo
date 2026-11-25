@@ -1,4 +1,4 @@
-// カードの引き落とし：月末締めで、翌月の決めた日に口座から出る
+// カードの引き落とし：締め日までに使った分が、締めた月の翌月の決めた日に口座から出る
 import type { Row } from './aggregate';
 import { addMonths, dateFor, monthOf } from './recurring';
 
@@ -7,23 +7,31 @@ export function isCard(r: Row): boolean {
   return r.type === 'expense' && (r.entry?.paymentMethod ?? r.trip?.paymentMethod) === 'card';
 }
 
-/** その日に使ったカードの分が引き落とされる日 */
-export function withdrawalDate(date: string, cardPayDay: number): string {
-  return dateFor(addMonths(monthOf(date), 1), cardPayDay);
+export type CardRule = { cardPayDay?: number; cardCloseDay?: number };
+
+/** その日に使った分を締める月。締め日（なければ月末）を過ぎていれば次の月 */
+export function closingMonth(date: string, closeDay?: number): string {
+  const m = monthOf(date);
+  return closeDay && Number(date.slice(8)) > closeDay ? addMonths(m, 1) : m;
+}
+
+/** その日に使ったカードの分が引き落とされる日：締めた月の翌月の引き落とし日 */
+export function withdrawalDate(date: string, cardPayDay: number, closeDay?: number): string {
+  return dateFor(addMonths(closingMonth(date, closeDay), 1), cardPayDay);
 }
 
 /** お金が実際に口座から出入りする日。カードは引き落とし日、それ以外は記録の日 */
-export function moneyDate(r: Row, cardPayDay: number | undefined): string {
-  return cardPayDay && isCard(r) ? withdrawalDate(r.date, cardPayDay) : r.date;
+export function moneyDate(r: Row, rule: CardRule): string {
+  return rule.cardPayDay && isCard(r) ? withdrawalDate(r.date, rule.cardPayDay, rule.cardCloseDay) : r.date;
 }
 
 /** 今日より後に引き落とされるカードの分（引き落とし日ごと、日付の順） */
-export function pendingCard(rows: Row[], cardPayDay: number | undefined, today: string): { date: string; amount: number }[] {
-  if (!cardPayDay) return [];
+export function pendingCard(rows: Row[], rule: CardRule, today: string): { date: string; amount: number }[] {
+  if (!rule.cardPayDay) return [];
   const m = new Map<string, number>();
   for (const r of rows) {
     if (!isCard(r)) continue;
-    const d = withdrawalDate(r.date, cardPayDay);
+    const d = withdrawalDate(r.date, rule.cardPayDay, rule.cardCloseDay);
     if (d > today) m.set(d, (m.get(d) ?? 0) + r.amount);
   }
   return [...m.entries()].map(([date, amount]) => ({ date, amount })).sort((a, b) => (a.date < b.date ? -1 : 1));

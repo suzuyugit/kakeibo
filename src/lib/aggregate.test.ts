@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Category, Entry, LedgerEntry, LedgerTrip } from '../db/types';
-import { expenseByCategory, toRows, totalsByDay, totalsIn, travelByCategory } from './aggregate';
+import { expenseByCategory, scheduledRows, toRows, totalsByDay, totalsIn, travelByCategory } from './aggregate';
 
 const cats: Category[] = [
   { id: 'ex-01-food', type: 'expense', name: '食費', icon: '🍙', usageCount: 0, order: 1 },
@@ -47,5 +47,19 @@ describe('集計', () => {
 
   it('旅行の内訳はたびメモのカテゴリ別', () => {
     expect(travelByCategory(rows, { start: '2026-12-01', end: '2026-12-31' })).toEqual([{ name: '交通', icon: '🚃', amount: 3000 }]);
+  });
+
+  it('これから入る固定の予定（まだ記録がない、今日より後）', () => {
+    const recs = [
+      { id: 'r', type: 'income' as const, name: 'バイト代', amount: 50000, categoryId: 'in-01-salary', dayOfMonth: 10, startMonth: '2026-10', skippedMonths: ['2027-01'], payFor: 'prev' as const },
+      { id: 's', type: 'expense' as const, name: 'スマホ', amount: 8000, categoryId: 'ex-01-food', dayOfMonth: 27, startMonth: '2026-11', endMonth: '2026-11', skippedMonths: [] },
+    ];
+    const made = [e('m', 'income', '2026-11-10', 48000, 'in-01-salary', { recurringId: 'r', recurringMonth: '2026-11' })];
+    const s = scheduledRows(recs, made, cats, '2026-11-01', '2027-02-28', '2026-11-25');
+    expect(s.map((r) => [r.date, r.type, r.amount, r.sub, r.scheduled])).toEqual([
+      ['2026-12-10', 'income', 50000, 'バイト代（11月分）', true],
+      ['2027-02-10', 'income', 50000, 'バイト代（1月分）', true],
+      ['2026-11-27', 'expense', 8000, 'スマホ', true],
+    ]);
   });
 });

@@ -182,7 +182,7 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
               ))}
             </div>
             {paymentMethod === 'card' && settings.cardPayDay && (
-              <span className="muted small">💳 {formatMd(withdrawalDate(date, settings.cardPayDay))} に引き落とし</span>
+              <span className="muted small">💳 {formatMd(withdrawalDate(date, settings.cardPayDay, settings.cardCloseDay))} に引き落とし</span>
             )}
           </div>
         )}

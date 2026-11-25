@@ -49,7 +49,8 @@ export type Settings = {
   key: 'settings';
   monthStartDay: number; // 1〜28
   monthlyBudget?: number; // 全体の予算
-  cardPayDay?: number; // カードの引き落とし日（1〜31）。月末締めで翌月のこの日に口座から出る。なければ使った日に減る
+  cardPayDay?: number; // カードの引き落とし日（1〜31）。締めた月の翌月のこの日に口座から出る。なければ使った日に減る
+  cardCloseDay?: number; // カードの締め日（1〜28）。なければ月末締め
   savingsAmount?: number; // 入力した貯金の額
   savingsAsOf?: string; // その額がいつの時点の額か（YYYY-MM-DD）
   savingsSetAt?: string; // 貯金を入れた日時（ISO）。入れた日と同じ日の記録は、これより後に記録したものだけ足す

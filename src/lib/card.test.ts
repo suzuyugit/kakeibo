@@ -17,10 +17,17 @@ describe('カードの引き落とし', () => {
     expect(withdrawalDate('2026-11-03', 27)).toBe('2026-12-27');
     expect(withdrawalDate('2026-11-30', 27)).toBe('2026-12-27');
     expect(withdrawalDate('2027-01-15', 31)).toBe('2027-02-28');
-    expect(moneyDate(row('2026-11-03', 1, 'card'), 27)).toBe('2026-12-27');
-    expect(moneyDate(row('2026-11-03', 1, 'cash'), 27)).toBe('2026-11-03');
-    expect(moneyDate(row('2026-11-03', 1, 'card'), undefined)).toBe('2026-11-03');
-    expect(moneyDate(tripRow('2026-11-03', 1), 10)).toBe('2026-12-10');
+    expect(moneyDate(row('2026-11-03', 1, 'card'), { cardPayDay: 27 })).toBe('2026-12-27');
+    expect(moneyDate(row('2026-11-03', 1, 'cash'), { cardPayDay: 27 })).toBe('2026-11-03');
+    expect(moneyDate(row('2026-11-03', 1, 'card'), {})).toBe('2026-11-03');
+    expect(moneyDate(tripRow('2026-11-03', 1), { cardPayDay: 10 })).toBe('2026-12-10');
+  });
+
+  it('締め日（15日締め・翌月10日払い）：11/16〜12/15 の分が 1/10', () => {
+    expect(withdrawalDate('2026-11-15', 10, 15)).toBe('2026-12-10');
+    expect(withdrawalDate('2026-11-16', 10, 15)).toBe('2027-01-10');
+    expect(withdrawalDate('2026-12-15', 10, 15)).toBe('2027-01-10');
+    expect(withdrawalDate('2026-12-31', 10, 15)).toBe('2027-02-10');
   });
 
   it('今の貯金は、引き落とされるまでカードの分を引かない', () => {
@@ -36,11 +43,11 @@ describe('カードの引き落とし', () => {
 
   it('これからの引き落としを見込みで引く', () => {
     const rows = [row('2026-11-10', 3000, 'card'), row('2026-11-20', 1000, 'card'), row('2026-12-01', 400, 'card')];
-    expect(pendingCard(rows, 27, '2026-11-26')).toEqual([
+    expect(pendingCard(rows, { cardPayDay: 27 }, '2026-11-26')).toEqual([
       { date: '2026-12-27', amount: 4000 },
       { date: '2027-01-27', amount: 400 },
     ]);
-    const input = { savings: 50000, today: '2026-11-26', recurrings: [], perDay: 0, trips: [], cardOut: pendingCard(rows, 27, '2026-11-26') };
+    const input = { savings: 50000, today: '2026-11-26', recurrings: [], perDay: 0, trips: [], cardOut: pendingCard(rows, { cardPayDay: 27 }, '2026-11-26') };
     expect(projectedAt(input, '2026-12-26')).toBe(50000);
     expect(projectedAt(input, '2026-12-27')).toBe(46000);
     expect(projectedAt(input, '2027-01-31')).toBe(45600);

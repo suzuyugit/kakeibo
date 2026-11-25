@@ -18,7 +18,7 @@ export type SavingsNow = {
  * - 先の日付の記録はまだ足さない
  * 貯金をまだ入れていなければ undefined
  */
-export type SavingsBase = Pick<Settings, 'savingsAmount' | 'savingsAsOf' | 'savingsSetAt' | 'cardPayDay'>;
+export type SavingsBase = Pick<Settings, 'savingsAmount' | 'savingsAsOf' | 'savingsSetAt' | 'cardPayDay' | 'cardCloseDay'>;
 
 /**
  * その記録が、入れた貯金のあとの増減に入るか（先の日付・入れる前のものは入らない）。
@@ -26,7 +26,7 @@ export type SavingsBase = Pick<Settings, 'savingsAmount' | 'savingsAsOf' | 'savi
  */
 export function countsTowardSavings(r: Row, settings: SavingsBase, today: string, setAtDate?: string): boolean {
   const asOf = settings.savingsAsOf;
-  const d = moneyDate(r, settings.cardPayDay);
+  const d = moneyDate(r, settings);
   if (!asOf || d > today || d < asOf) return false;
   if (d > asOf) return true;
   // 入れた日に引き落とされたカードの分は、もう口座に入っているとみなす

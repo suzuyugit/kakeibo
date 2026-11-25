@@ -132,14 +132,6 @@ export function HomeScreen({ onEdit }: Props) {
       )}
 
       <section className="card">
-        <div className="settle-head">
-          <h3 className="card-title">たびメモの旅行</h3>
-          <span className="muted small">{settings.ledgerExportedAt ? `${formatExportedAt(settings.ledgerExportedAt)} 時点` : 'まだ取り込んでいません'}</span>
-        </div>
-        <LedgerImportButton className="btn btn-ghost btn-block" />
-      </section>
-
-      <section className="card">
         <h3 className="card-title">最近の記録</h3>
         {recent.length === 0 ? (
           <p className="empty">まだ記録がありません。右下の ＋ から記録できます。</p>
@@ -150,6 +142,10 @@ export function HomeScreen({ onEdit }: Props) {
           📅 カレンダーで見る
         </button>
       </section>
+      <div className="sub-feature">
+        <LedgerImportButton className="btn-text small" />
+        <span className="muted small">{settings.ledgerExportedAt ? `${formatExportedAt(settings.ledgerExportedAt)} 時点` : ''}</span>
+      </div>
     </>
   );
 }

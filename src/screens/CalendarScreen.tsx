@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db, TRAVEL_CATEGORY } from '../db/db';
 import type { Entry } from '../db/types';
-import { TRAVEL_CATEGORY } from '../db/db';
 import { RowList } from '../components/RowList';
 import { useCategories, useRows, useSettings } from '../hooks/useData';
-import { expenseByCategory, totalsByDay, totalsIn, travelByCategory } from '../lib/aggregate';
+import { expenseByCategory, scheduledRows, totalsByDay, totalsIn, travelByCategory } from '../lib/aggregate';
 import { formatMd, parseYmd, todayYmd } from '../lib/date';
 import { yen } from '../lib/money';
 import { daysOf, inPeriod, periodByKey, periodLabel, periodOf, shiftKey } from '../lib/period';
@@ -27,6 +28,7 @@ export function CalendarScreen({ selected, onSelect, onEdit, onAdd }: Props) {
   const settings = useSettings();
   const rows = useRows();
   const categories = useCategories();
+  const recurrings = useLiveQuery(() => db.recurrings.toArray()) ?? [];
   const startDay = settings.monthStartDay;
   const [key, setKey] = useState(() => periodOf(selected, startDay).key);
   const [showTravel, setShowTravel] = useState(false);
@@ -36,8 +38,11 @@ export function CalendarScreen({ selected, onSelect, onEdit, onAdd }: Props) {
   const period = periodByKey(key, startDay);
   const today = todayYmd();
   const days = daysOf(period);
-  const byDay = totalsByDay(rows);
-  const month = totalsIn(rows, period);
+  // これから入る固定の予定もカレンダーに出す
+  const entries = rows.flatMap((r) => (r.entry ? [r.entry] : []));
+  const calRows = [...rows, ...scheduledRows(recurrings, entries, categories, period.start, period.end, today)];
+  const byDay = totalsByDay(calRows);
+  const month = totalsIn(calRows, period); // 固定の予定も含める（マスの額と合わせる）
   const lead = parseYmd(period.start).getDay();
   const cells: (string | null)[] = [...Array(lead).fill(null), ...days];
   while (cells.length % 7) cells.push(null);
@@ -49,7 +54,7 @@ export function CalendarScreen({ selected, onSelect, onEdit, onAdd }: Props) {
     onSelect(inPeriod(today, p) ? today : p.start);
   };
 
-  const dayRows = rows.filter((r) => r.date === selected);
+  const dayRows = calRows.filter((r) => r.date === selected);
   const dayTotal = byDay.get(selected) ?? { expense: 0, income: 0 };
   const byCat = expenseByCategory(rows, period);
   const maxCat = byCat[0]?.amount ?? 1;
@@ -65,8 +70,8 @@ export function CalendarScreen({ selected, onSelect, onEdit, onAdd }: Props) {
           </button>
           <div className="month-title">
             <b>{periodLabel(period, startDay)}</b>
-            <span className="muted small">
-              支出 {yen(month.expense)}・収入 {yen(month.income)}
+            <span className="small">
+              <span className="plus">+{yen(month.income)}</span>　<span className="minus">−{yen(month.expense)}</span>
             </span>
           </div>
           <button type="button" className="icon-btn" onClick={() => move(1)} aria-label="次の月">
@@ -101,11 +106,11 @@ export function CalendarScreen({ selected, onSelect, onEdit, onAdd }: Props) {
                 type="button"
                 className={`cal-cell ${d === selected ? 'selected' : ''} ${d === today ? 'today' : ''} ${d > today ? 'future' : ''}`}
                 onClick={() => onSelect(d)}
-                aria-label={`${formatMd(d)} 支出 ${yen(t?.expense ?? 0)}`}
+                aria-label={`${formatMd(d)} 収入 ${yen(t?.income ?? 0)} 支出 ${yen(t?.expense ?? 0)}`}
               >
                 <span className="cal-day">{label}</span>
-                {t && t.expense > 0 && <span className="cal-amount">{compactYen(t.expense)}</span>}
-                {t && t.income > 0 && <span className="cal-income" aria-hidden="true" />}
+                {t && t.income > 0 && <span className="cal-amount plus">+{compactYen(t.income)}</span>}
+                {t && t.expense > 0 && <span className="cal-amount minus">−{compactYen(t.expense)}</span>}
               </button>
             );
           })}
@@ -116,12 +121,12 @@ export function CalendarScreen({ selected, onSelect, onEdit, onAdd }: Props) {
         <div className="settle-head">
           <h3 className="card-title">{formatMd(selected)}</h3>
           <span className="muted small">
-            {dayTotal.expense > 0 && `支出 ${yen(dayTotal.expense)}`}
-            {dayTotal.expense > 0 && dayTotal.income > 0 && '・'}
-            {dayTotal.income > 0 && <span className="income">収入 {yen(dayTotal.income)}</span>}
+            {dayTotal.income > 0 && <span className="plus">+{yen(dayTotal.income)}</span>}
+            {dayTotal.expense > 0 && dayTotal.income > 0 && '　'}
+            {dayTotal.expense > 0 && <span className="minus">−{yen(dayTotal.expense)}</span>}
           </span>
         </div>
-        {dayRows.length === 0 ? <p className="empty">この日の記録はありません</p> : <RowList rows={dayRows} onEdit={onEdit} />}
+        {dayRows.length === 0 ? <p className="empty">この日の記録はありません</p> : <RowList rows={dayRows} onEdit={onEdit} signColors />}
         <button type="button" className="btn btn-ghost btn-block" onClick={() => onAdd(selected)}>
           ＋ この日に記録する
         </button>

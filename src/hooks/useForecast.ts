@@ -25,7 +25,7 @@ export function useForecast(settings: Settings, rows: Row[] | undefined): Foreca
   const today = todayYmd();
   const savings = savingsNow(settings, rows, today);
   const daily = dailySpend(rows, today, settings, recurrings);
-  const cardOut = pendingCard(rows, settings.cardPayDay, today);
+  const cardOut = pendingCard(rows, settings, today);
   const input = savings ? { savings: savings.total, today, recurrings, perDay: daily.perDay, trips, cardOut } : undefined;
   return { today, savings, daily, cardOut, input, trips, forecasts: input ? tripForecasts(input) : [], recurrings };
 }

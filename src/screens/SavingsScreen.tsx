@@ -21,7 +21,7 @@ export function SavingsScreen() {
     return <SavingsCard settings={settings} rows={rows} />;
   }
 
-  const past = pastSeries(fc.savings.base, fc.savings.asOf, rows, fc.today, (r) => countsTowardSavings(r, settings, fc.today), (r) => moneyDate(r, settings.cardPayDay));
+  const past = pastSeries(fc.savings.base, fc.savings.asOf, rows, fc.today, (r) => countsTowardSavings(r, settings, fc.today), (r) => moneyDate(r, settings));
   const perMonth = Math.round(fc.daily.perDay * 30);
   const fixedIn = fc.recurrings.filter((r) => r.type === 'income' && !r.endMonth).reduce((a, r) => a + r.amount, 0);
   const fixedOut = fc.recurrings.filter((r) => r.type === 'expense' && !r.endMonth).reduce((a, r) => a + r.amount, 0);
@@ -34,7 +34,7 @@ export function SavingsScreen() {
         <section className="card">
           <h3 className="card-title">✈️ 予定の旅行</h3>
           <p className="muted small">予定の旅行がありません。たびメモで旅行を作って「家計簿に送る」→ ここで取り込むと、出発日までに貯金がいくらあるかが出ます。</p>
-          <LedgerImportButton className="btn btn-ghost btn-block" />
+          <LedgerImportButton className="btn-text small" />
         </section>
       ) : (
         fc.forecasts.map((f) => (
@@ -73,7 +73,7 @@ export function SavingsScreen() {
           </li>
           <li>旅行の分は、予算（なければ見積もり）からもう使った額を引いて、出発日に出ていくとみなします</li>
           {settings.cardPayDay ? (
-            <li>カードで払った分は、翌月{settings.cardPayDay}日の引き落とし日に減ります</li>
+            <li>カードで払った分は、{settings.cardCloseDay ? `${settings.cardCloseDay}日` : '月末'}締め・翌月{settings.cardPayDay}日の引き落とし日に減ります</li>
           ) : null}
         </ul>
         {fc.daily.basis === 'none' && (

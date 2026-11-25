@@ -13,6 +13,20 @@ import { formatExportedAt, LedgerImportButton } from '../components/LedgerImport
 import { useCategories, useSettings } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
 import { periodLabel, periodOf } from '../lib/period';
+import { closingMonth, withdrawalDate } from '../lib/card';
+import { addMonths, dateFor } from '../lib/recurring';
+import { addDays as addDaysYmd } from '../lib/forecast';
+
+/** 例：「11/16〜12/15 に使った分が 1/10 に引き落とし」 */
+function cardExample(closeDay: number | undefined, payDay: number): string {
+  const today = todayYmd();
+  const m = closingMonth(today, closeDay);
+  const md = (ymd: string) => `${Number(ymd.slice(5, 7))}/${Number(ymd.slice(8))}`;
+  const end = closeDay ? `${m}-${String(closeDay).padStart(2, '0')}` : dateFor(m, 31);
+  const prev = addMonths(m, -1);
+  const start = closeDay ? addDaysYmd(`${prev}-${String(closeDay).padStart(2, '0')}`, 1) : `${m}-01`;
+  return `${md(start)}〜${md(end)} に使った分が ${md(withdrawalDate(end, payDay, closeDay))} に引き落とし`;
+}
 
 export function SettingsScreen() {
   const settings = useSettings();
@@ -40,7 +54,18 @@ export function SettingsScreen() {
       <section className="card">
         <h3 className="card-title">💳 カードの引き落とし</h3>
         <label className="field">
-          <span className="label">カードで払った分が口座から出る日</span>
+          <span className="label">締め日</span>
+          <select value={settings.cardCloseDay ?? 0} onChange={(e) => void updateSettings({ cardCloseDay: Number(e.target.value) || undefined })}>
+            <option value={0}>月末</option>
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>
+                {d}日
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span className="label">引き落とし日（口座から出る日）</span>
           <select
             value={settings.cardPayDay ?? 0}
             onChange={(e) => void updateSettings({ cardPayDay: Number(e.target.value) || undefined })}
@@ -54,7 +79,10 @@ export function SettingsScreen() {
           </select>
         </label>
         <p className="muted small">
-          月末締めで、その月にカードで払った分が翌月のこの日にまとめて引き落とされるとして、今の貯金と見込みを計算します。カレンダーや予算は、使った日のままです。
+          {settings.cardPayDay
+            ? `例：${cardExample(settings.cardCloseDay, settings.cardPayDay)}。`
+            : ''}
+          締め日までにカードで払った分が、締めた月の翌月の引き落とし日にまとめて口座から出るとして、今の貯金と見込みを計算します。カレンダーや予算は、使った日のままです。
         </p>
       </section>
 
@@ -112,6 +140,7 @@ export function SettingsScreen() {
         </ul>
       </section>
 
+
       <section className="card">
         <h3 className="card-title">たびメモとの連携</h3>
         <p className="small">
@@ -122,7 +151,7 @@ export function SettingsScreen() {
         <p className="muted small">
           たびメモの「設定」で「💴 家計簿に送る」を押してから、ここで取り込みます。毎回まるごと入れ替わるので、何度取り込んでも二重にはなりません。旅行の支出を直すときは、たびメモで直してから送り直してください。
         </p>
-        <LedgerImportButton />
+        <LedgerImportButton className="btn btn-ghost btn-block" />
         {(settings.excludedTripIds?.length || settings.excludedEntryIds?.length) ? (
           <div className="excluded">
             <p className="small">
