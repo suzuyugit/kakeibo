@@ -54,6 +54,7 @@ export type Settings = {
   key: 'settings';
   monthStartDay: number; // 1〜28
   monthlyBudget?: number; // 全体の予算
+  budgetFromCategories?: boolean; // true なら、全体の予算はカテゴリごとの予算の合計（「旅行」は除く）
   budgetExcludesFixed?: boolean; // true なら、全体の予算は固定費を除いた「自由に使える額」。なければ固定費も含めた額
   cardPayDay?: number; // カードの引き落とし日（1〜31）。締めた月の翌月のこの日に口座から出る。なければ使った日に減る
   cardCloseDay?: number; // カードの締め日（1〜28）。なければ月末締め

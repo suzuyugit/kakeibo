@@ -3786,3 +3786,7 @@ button.card.trip-card {
   gap: 8px;
   padding: 0 0 6px;
 }
+
+.budget-sum {
+  font-size: 18px;
+}
