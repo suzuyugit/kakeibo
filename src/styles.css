@@ -3487,3 +3487,30 @@ button.card.trip-card {
   justify-content: space-between;
   gap: 8px;
 }
+
+/* 月を選ぶスライダー */
+.slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.slider-month {
+  text-align: center;
+}
+
+.month-slider {
+  width: 100%;
+  margin: 10px 0 2px;
+  accent-color: var(--primary);
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.slider-scale {
+  display: flex;
+  justify-content: space-between;
+}

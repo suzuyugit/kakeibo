@@ -7,25 +7,46 @@ import { addMonths, monthOf } from '../lib/recurring';
 /** 好きな月を選ぶと「このままいけば ○月末には ○円」と内訳を出す */
 export function SavingsAtMonth({ input, tripMonths }: { input: ForecastInput; tripMonths: Map<string, string[]> }) {
   const months = monthEnds(monthOf(input.today), addMonths(monthOf(input.today), 35));
-  const [month, setMonth] = useState(() => addMonths(monthOf(input.today), 1));
-  const end = months.find((m) => m.month === month)!.end;
+  const [idx, setIdx] = useState(1); // 0 = 今月
+  const month = months[idx].month;
+  const end = months[idx].end;
+  const trip = tripMonths.get(month);
   const b = breakdownAt(input, end);
   const label = (m: string) => `${m.slice(0, 4)}年${Number(m.slice(5))}月`;
 
   return (
     <section className="card">
       <h3 className="card-title">好きな月の貯金を見る</h3>
-      <label className="field">
-        <span className="label">見たい月</span>
-        <select value={month} onChange={(e) => setMonth(e.target.value)}>
-          {months.map((m) => (
-            <option key={m.month} value={m.month}>
-              {label(m.month)}末{m.month === monthOf(input.today) ? '（今月）' : ''}
-              {tripMonths.get(m.month) ? `　✈️ ${tripMonths.get(m.month)!.join('・')}` : ''}
-            </option>
-          ))}
-        </select>
-      </label>
+      <p className="muted small">左右にスライドすると、その月の終わりの貯金の見込みが出ます。</p>
+      <div className="slider-head">
+        <button type="button" className="icon-btn" disabled={idx === 0} onClick={() => setIdx(idx - 1)} aria-label="前の月">
+          ‹
+        </button>
+        <b className="slider-month">
+          {label(month)}末{idx === 0 ? '（今月）' : ''}
+          {trip && <span className="small"> ✈️ {trip.join('・')}</span>}
+        </b>
+        <button type="button" className="icon-btn" disabled={idx === months.length - 1} onClick={() => setIdx(idx + 1)} aria-label="次の月">
+          ›
+        </button>
+      </div>
+      <input
+        type="range"
+        className="month-slider"
+        min={0}
+        max={months.length - 1}
+        step={1}
+        value={idx}
+        onChange={(e) => setIdx(Number(e.target.value))}
+        aria-label="見たい月"
+        aria-valuetext={`${label(month)}末 ${yen(b.total)}`}
+      />
+      <div className="slider-scale muted small">
+        <span>今月</span>
+        <span>1年後</span>
+        <span>2年後</span>
+        <span>3年後</span>
+      </div>
       <div className="at-month">
         <span className="muted small">このままいけば {label(month)}末には</span>
         <span className={`hero-num ${b.total < 0 ? 'over' : ''}`}>{yen(b.total)}</span>
