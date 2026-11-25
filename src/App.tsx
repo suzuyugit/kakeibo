@@ -7,6 +7,7 @@ import { EntrySheet } from './components/EntrySheet';
 import { HomeScreen } from './screens/HomeScreen';
 import { CalendarScreen } from './screens/CalendarScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { SavingsScreen } from './screens/SavingsScreen';
 import { todayYmd } from './lib/date';
 import { applyRecurring } from './db/recurringRepo';
 import { showToast } from './components/Toast';
@@ -14,6 +15,7 @@ import { showToast } from './components/Toast';
 const TABS: { key: TabKey; icon: string; label: string; title: string }[] = [
   { key: 'home', icon: '🏠', label: 'ホーム', title: '家計簿' },
   { key: 'calendar', icon: '📅', label: 'カレンダー', title: 'カレンダー' },
+  { key: 'savings', icon: '💰', label: '貯金', title: '貯金' },
   { key: 'settings', icon: '⚙️', label: '設定', title: '設定' },
 ];
 
@@ -59,6 +61,8 @@ export function App() {
           <HomeScreen onEdit={edit} />
         ) : route.name === 'calendar' ? (
           <CalendarScreen selected={day} onSelect={setDay} onEdit={edit} onAdd={openNew} />
+        ) : route.name === 'savings' ? (
+          <SavingsScreen />
         ) : (
           <SettingsScreen />
         )}
@@ -69,7 +73,7 @@ export function App() {
         ＋
       </button>
 
-      <nav className="tabbar tabbar-3" aria-label="タブ">
+      <nav className="tabbar" aria-label="タブ">
         {TABS.map((t) => (
           <button
             key={t.key}

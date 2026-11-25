@@ -6,6 +6,7 @@ import { forSettings, reorderCategories } from '../db/categoryRepo';
 import { CategorySheet } from '../components/CategorySheet';
 import { RecurringSection } from '../components/RecurringSection';
 import { BudgetSection } from '../components/BudgetSection';
+import { BackupSection } from '../components/BackupSection';
 import { formatExportedAt, LedgerImportButton } from '../components/LedgerImport';
 import { useCategories, useSettings } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
@@ -100,6 +101,8 @@ export function SettingsScreen() {
         </p>
         <LedgerImportButton />
       </section>
+
+      <BackupSection />
 
       {editing && <CategorySheet type={type} category={editing.category} onClose={() => setEditing(null)} />}
     </>

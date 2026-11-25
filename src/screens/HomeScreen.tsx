@@ -5,6 +5,8 @@ import { RowList } from '../components/RowList';
 import { SavingsCard } from '../components/SavingsCard';
 import { formatExportedAt, LedgerImportButton } from '../components/LedgerImport';
 import { useCategories, useRows, useSettings } from '../hooks/useData';
+import { useForecast } from '../hooks/useForecast';
+import { TripForecastBody } from '../components/TripForecastCard';
 import { totalsIn } from '../lib/aggregate';
 import { budgetStatus } from '../lib/budget';
 import { dayCount, formatMd, todayYmd } from '../lib/date';
@@ -18,6 +20,7 @@ export function HomeScreen({ onEdit }: Props) {
   const settings = useSettings();
   const rows = useRows();
   const categories = useCategories();
+  const fc = useForecast(settings, rows);
   const trips = useLiveQuery(() => db.tripLedger.orderBy('startDate').toArray()) ?? [];
   if (!rows) return null;
 
@@ -29,6 +32,7 @@ export function HomeScreen({ onEdit }: Props) {
   const recent = rows.filter((r) => r.date <= today).slice(0, 5);
   // 次の旅行：旅行中か、これからの旅行でいちばん近いもの
   const next = trips.find((t) => t.endDate >= today);
+  const nextFc = next ? fc?.forecasts.find((f) => f.trip.tripId === next.tripId) : undefined;
 
   return (
     <>
@@ -105,20 +109,24 @@ export function HomeScreen({ onEdit }: Props) {
           <div className="muted small">
             {formatMd(next.startDate)}〜{formatMd(next.endDate)}
           </div>
-          <div className="month-stats">
-            <div>
-              <span className="muted small">予算</span>
-              <b>{next.budgetYen !== undefined ? yen(next.budgetYen) : '―'}</b>
+          {nextFc ? (
+            <TripForecastBody f={nextFc} />
+          ) : (
+            <div className="month-stats">
+              <div>
+                <span className="muted small">予算</span>
+                <b>{next.budgetYen !== undefined ? yen(next.budgetYen) : '―'}</b>
+              </div>
+              <div>
+                <span className="muted small">見積もり</span>
+                <b>{yen(next.estimateYen)}</b>
+              </div>
+              <div>
+                <span className="muted small">もう使った</span>
+                <b>{yen(next.spentYen)}</b>
+              </div>
             </div>
-            <div>
-              <span className="muted small">見積もり</span>
-              <b>{yen(next.estimateYen)}</b>
-            </div>
-            <div>
-              <span className="muted small">もう使った</span>
-              <b>{yen(next.spentYen)}</b>
-            </div>
-          </div>
+          )}
           <div className="muted small trip-link">たびメモで開く ›</div>
         </a>
       )}

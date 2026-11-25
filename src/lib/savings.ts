@@ -17,25 +17,24 @@ export type SavingsNow = {
  * - 先の日付の記録はまだ足さない
  * 貯金をまだ入れていなければ undefined
  */
-export function savingsNow(
-  settings: Pick<Settings, 'savingsAmount' | 'savingsAsOf' | 'savingsSetAt'>,
-  rows: Row[],
-  today: string,
-  setAtDate?: string, // savingsSetAt の端末の日付（テスト用に渡せる）
-): SavingsNow | undefined {
-  if (settings.savingsAmount === undefined || !settings.savingsAsOf) return undefined;
+export type SavingsBase = Pick<Settings, 'savingsAmount' | 'savingsAsOf' | 'savingsSetAt'>;
+
+/** その記録が、入れた貯金のあとの増減に入るか（先の日付・入れる前のものは入らない） */
+export function countsTowardSavings(r: Row, settings: SavingsBase, today: string, setAtDate?: string): boolean {
   const asOf = settings.savingsAsOf;
+  if (!asOf || r.date > today || r.date < asOf) return false;
+  if (r.date > asOf) return true;
+  // 入れた日と同じ日の記録は、入れたあとに記録したものだけ（旅行の支出は入っているとみなす）
   const setAt = settings.savingsSetAt;
   const setDay = setAtDate ?? (setAt ? toYmd(new Date(setAt)) : undefined);
+  return !!(setAt && setDay === asOf && r.entry && r.entry.createdAt > setAt);
+}
+
+export function savingsNow(settings: SavingsBase, rows: Row[], today: string, setAtDate?: string): SavingsNow | undefined {
+  if (settings.savingsAmount === undefined || !settings.savingsAsOf) return undefined;
   let change = 0;
   for (const r of rows) {
-    if (r.date > today || r.date < asOf) continue;
-    if (r.date === asOf) {
-      // 入れた日と同じ日の記録は、入れたあとに記録したものだけ（旅行の支出は入っているとみなす）
-      const after = setAt && setDay === asOf && r.entry && r.entry.createdAt > setAt;
-      if (!after) continue;
-    }
-    change += r.type === 'income' ? r.amount : -r.amount;
+    if (countsTowardSavings(r, settings, today, setAtDate)) change += r.type === 'income' ? r.amount : -r.amount;
   }
-  return { base: settings.savingsAmount, asOf, change, total: settings.savingsAmount + change };
+  return { base: settings.savingsAmount, asOf: settings.savingsAsOf, change, total: settings.savingsAmount + change };
 }

@@ -41,6 +41,8 @@ export type Recurring = {
   startMonth: string; // YYYY-MM
   endMonth?: string; // 止めた・金額を変えたとき（この月まで）
   skippedMonths: string[]; // 自動で入った記録を消した月
+  /** 収入のとき、どの月の分か。'prev' = 前の月の分（バイト代の翌月払いなど）。なければその月の分 */
+  payFor?: 'same' | 'prev';
 };
 
 export type Settings = {

@@ -6,7 +6,7 @@ import { useCategories } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
 import { PAYMENT_LABEL, PAYMENT_METHODS } from '../lib/labels';
 import { parseYen, yen } from '../lib/money';
-import { dateFor, nextMonthFrom, upcomingMonth } from '../lib/recurring';
+import { addMonths, dateFor, nextMonthFrom, upcomingMonth } from '../lib/recurring';
 import { Sheet } from './Sheet';
 import { showToast } from './Toast';
 
@@ -21,6 +21,7 @@ export function RecurringSheet({ recurring, onClose }: Props) {
   const [day, setDay] = useState(recurring?.dayOfMonth ?? 25);
   const [categoryId, setCategoryId] = useState(recurring?.categoryId ?? '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(recurring?.paymentMethod ?? 'bank');
+  const [payFor, setPayFor] = useState<'same' | 'prev'>(recurring?.payFor ?? 'same');
   const [error, setError] = useState('');
   const today = todayYmd();
   const picks = forPicker(categories, type);
@@ -29,14 +30,24 @@ export function RecurringSheet({ recurring, onClose }: Props) {
   const amountNum = parseYen(amount);
   const amountChanged = recurring && amountNum !== undefined && !Number.isNaN(amountNum) && amountNum !== recurring.amount;
   // 今ある固定は今日の分がもう入っているので、次の回は明日以降
-  const nextDate = dateFor(recurring ? upcomingMonth(day, today) : nextMonthFrom(day, today), day);
+  const nextMonth = recurring ? upcomingMonth(day, today) : nextMonthFrom(day, today);
+  const nextDate = dateFor(nextMonth, day);
 
   const save = async () => {
     if (!name.trim()) return setError('名前を入れてください（例：バイト代、家賃）');
     if (amountNum === undefined || Number.isNaN(amountNum) || amountNum <= 0) return setError('金額を入れてください');
     if (!categoryId) return setError('カテゴリを選んでください');
     await saveRecurring(
-      { type, name: name.trim(), amount: amountNum, categoryId, dayOfMonth: day, ...(type === 'expense' ? { paymentMethod } : {}) },
+      {
+        type,
+        name: name.trim(),
+        amount: amountNum,
+        categoryId,
+        dayOfMonth: day,
+        // 切り替えたときに前の値が残らないよう、使わないほうは undefined で上書きする
+        paymentMethod: type === 'expense' ? paymentMethod : undefined,
+        payFor: type === 'income' && payFor === 'prev' ? 'prev' : undefined,
+      },
       recurring,
       today,
     );
@@ -103,6 +114,24 @@ export function RecurringSheet({ recurring, onClose }: Props) {
             <input className="amount-input" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" aria-label="金額" />
           </label>
         </div>
+        {type === 'income' && (
+          <div className="field">
+            <span className="label">いつの分？</span>
+            <div className="chips" role="radiogroup">
+              <button type="button" role="radio" aria-checked={payFor === 'same'} className={`pick ${payFor === 'same' ? 'active' : ''}`} onClick={() => setPayFor('same')}>
+                その月の分
+              </button>
+              <button type="button" role="radio" aria-checked={payFor === 'prev'} className={`pick ${payFor === 'prev' ? 'active' : ''}`} onClick={() => setPayFor('prev')}>
+                前の月の分（翌月払い）
+              </button>
+            </div>
+            {payFor === 'prev' && (
+              <p className="muted small">
+                例：{Number(addMonths(nextMonth, -1).slice(5))}月に働いた分が {Number(nextMonth.slice(5))}/{Number(nextDate.slice(8))} に入ります。記録には「{name.trim() || 'バイト代'}（{Number(addMonths(nextMonth, -1).slice(5))}月分）」と書きます。
+              </p>
+            )}
+          </div>
+        )}
         {day >= 29 && <p className="muted small">{day}日がない月は、その月の最終日に入ります。</p>}
         {amountChanged ? (
           <p className="notice small">金額は次の回（{nextDate.slice(5).replace('-', '/')}）から {yen(amountNum!)} になります。もう入った記録は変わりません。</p>

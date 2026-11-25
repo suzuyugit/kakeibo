@@ -37,6 +37,13 @@ export function isActive(r: Pick<Recurring, 'endMonth' | 'dayOfMonth'>, today: s
   return !r.endMonth || r.endMonth >= upcomingMonth(r.dayOfMonth, today);
 }
 
+/** 自動で入る記録のメモ。翌月払いの収入なら「バイト代（10月分）」 */
+export function recurringMemo(r: Pick<Recurring, 'name' | 'type' | 'payFor'>, month: string): string {
+  if (r.type !== 'income' || r.payFor !== 'prev') return r.name;
+  const prev = Number(addMonths(month, -1).slice(5));
+  return `${r.name}（${prev}月分）`;
+}
+
 /**
  * 今日までに入っているはずなのに、まだない記録。
  * startMonth から今月まで、日が来ていて、消した月（skippedMonths）でなく、まだ作っていない月の分
@@ -62,7 +69,7 @@ export function dueEntries(
         amount: r.amount,
         categoryId: r.categoryId,
         ...(r.type === 'expense' && r.paymentMethod ? { paymentMethod: r.paymentMethod } : {}),
-        memo: r.name,
+        memo: recurringMemo(r, m),
         recurringId: r.id,
         recurringMonth: m,
         createdAt: now,
@@ -73,7 +80,7 @@ export function dueEntries(
   return out;
 }
 
-export type RecurringInput = Pick<Recurring, 'type' | 'name' | 'amount' | 'categoryId' | 'dayOfMonth' | 'paymentMethod'>;
+export type RecurringInput = Pick<Recurring, 'type' | 'name' | 'amount' | 'categoryId' | 'dayOfMonth' | 'paymentMethod' | 'payFor'>;
 
 /**
  * 保存したときに、固定の一覧をどう変えるか。

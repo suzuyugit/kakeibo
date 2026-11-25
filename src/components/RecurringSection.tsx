@@ -38,7 +38,9 @@ export function RecurringSection() {
                     <span className="setting-icon">{c?.icon ?? '🔁'}</span>
                     <span className="setting-name">
                       {r.name}
-                      <span className="muted small recurring-day">毎月{r.dayOfMonth}日</span>
+                      <span className="muted small recurring-day">
+                        毎月{r.dayOfMonth}日{r.type === 'income' && r.payFor === 'prev' ? '（前の月の分）' : ''}
+                      </span>
                     </span>
                     <b className={r.type === 'income' ? 'income' : ''}>
                       {r.type === 'income' ? '+' : '−'}

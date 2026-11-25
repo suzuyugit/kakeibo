@@ -36,6 +36,14 @@ describe('自動で入る記録', () => {
     expect(dueEntries([r({ endMonth: '2026-09' })], new Set(), '2026-11-25').map((e) => e.recurringMonth)).toEqual(['2026-09']);
   });
 
+  it('翌月払いの収入は「○月分」と前の月を書く', () => {
+    const e = dueEntries([r({ dayOfMonth: 10, startMonth: '2026-12', payFor: 'prev' })], new Set(), '2027-01-10');
+    expect(e.map((x) => [x.date, x.memo])).toEqual([
+      ['2026-12-10', 'バイト代（11月分）'],
+      ['2027-01-10', 'バイト代（12月分）'],
+    ]);
+  });
+
   it('支出には支払い方法を付ける', () => {
     const e = dueEntries([r({ type: 'expense', paymentMethod: 'card', dayOfMonth: 31, startMonth: '2026-11' })], new Set(), '2026-11-30');
     expect(e[0]).toMatchObject({ date: '2026-11-30', paymentMethod: 'card' });
@@ -76,6 +84,11 @@ describe('保存・金額を変える・止める', () => {
     // 今日作ったばかり（今日の分が入った）の固定でも同じ
     expect(planSave(input, r({ startMonth: '2026-11' }), '2026-11-25', id).add!.startMonth).toBe('2026-12');
     expect(planStop(r({ startMonth: '2026-11' }), '2026-11-25')).toEqual({ update: { ...r({ startMonth: '2026-11' }), endMonth: '2026-11' } });
+  });
+
+  it('翌月払いをやめると前の設定が残らない', () => {
+    const p = planSave({ ...input, amount: 50000, payFor: undefined }, r({ payFor: 'prev' }), '2026-11-26', id);
+    expect(p.update!.payFor).toBeUndefined();
   });
 
   it('止める', () => {
