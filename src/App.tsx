@@ -8,6 +8,8 @@ import { HomeScreen } from './screens/HomeScreen';
 import { CalendarScreen } from './screens/CalendarScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { todayYmd } from './lib/date';
+import { applyRecurring } from './db/recurringRepo';
+import { showToast } from './components/Toast';
 
 const TABS: { key: TabKey; icon: string; label: string; title: string }[] = [
   { key: 'home', icon: '🏠', label: 'ホーム', title: '家計簿' },
@@ -20,6 +22,18 @@ export function App() {
   const [sheet, setSheet] = useState<{ entry?: Entry; date?: string } | null>(null);
   const [day, setDay] = useState(todayYmd);
   const keyboardProxy = useRef<HTMLInputElement>(null);
+
+  // 開いたとき・戻ってきたときに、日が来た固定の収入・支出を入れる
+  useEffect(() => {
+    const run = () =>
+      applyRecurring(todayYmd())
+        .then((n) => n > 0 && showToast(`固定の収入・支出を${n}件記録しました`))
+        .catch(() => undefined);
+    run();
+    const onVisible = () => document.visibilityState === 'visible' && run();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   // 画面が変わったら先頭へスクロール
   useEffect(() => {

@@ -4,6 +4,8 @@ import type { Category, EntryType } from '../db/types';
 import { db, updateSettings } from '../db/db';
 import { forSettings, reorderCategories } from '../db/categoryRepo';
 import { CategorySheet } from '../components/CategorySheet';
+import { RecurringSection } from '../components/RecurringSection';
+import { BudgetSection } from '../components/BudgetSection';
 import { formatExportedAt, LedgerImportButton } from '../components/LedgerImport';
 import { useCategories, useSettings } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
@@ -29,6 +31,9 @@ export function SettingsScreen() {
 
   return (
     <>
+      <RecurringSection />
+      <BudgetSection />
+
       <section className="card">
         <h3 className="card-title">月の始まり</h3>
         <label className="field">

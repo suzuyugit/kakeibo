@@ -2956,3 +2956,76 @@ a.card.trip-card {
 .field-inline .label {
   white-space: nowrap;
 }
+
+/* 固定の収入・支出 */
+.recurring-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.recurring-line select {
+  width: auto;
+}
+
+.small-amount {
+  flex: 1;
+  min-width: 140px;
+}
+
+.small-amount .amount-input {
+  font-size: 24px;
+}
+
+.cat-wrap {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+.recurring-day {
+  display: block;
+  font-weight: 400;
+}
+
+.recurring-sum {
+  text-align: right;
+  margin: 8px 0 0;
+}
+
+.notice {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--primary-weak);
+}
+
+/* 月の予算 */
+.budget-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.budget-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.budget-input input {
+  width: 120px;
+  text-align: right;
+}
+
+.budget-cats {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.budget-bars {
+  margin-top: 14px;
+}

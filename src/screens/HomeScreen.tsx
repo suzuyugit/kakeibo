@@ -4,8 +4,9 @@ import { db } from '../db/db';
 import { RowList } from '../components/RowList';
 import { SavingsCard } from '../components/SavingsCard';
 import { formatExportedAt, LedgerImportButton } from '../components/LedgerImport';
-import { useRows, useSettings } from '../hooks/useData';
+import { useCategories, useRows, useSettings } from '../hooks/useData';
 import { totalsIn } from '../lib/aggregate';
+import { budgetStatus } from '../lib/budget';
 import { dayCount, formatMd, todayYmd } from '../lib/date';
 import { yen, signedYen } from '../lib/money';
 import { periodLabel, periodOf } from '../lib/period';
@@ -16,6 +17,7 @@ type Props = { onEdit: (e: Entry) => void };
 export function HomeScreen({ onEdit }: Props) {
   const settings = useSettings();
   const rows = useRows();
+  const categories = useCategories();
   const trips = useLiveQuery(() => db.tripLedger.orderBy('startDate').toArray()) ?? [];
   if (!rows) return null;
 
@@ -23,8 +25,7 @@ export function HomeScreen({ onEdit }: Props) {
   const period = periodOf(today, settings.monthStartDay);
   const todayTotal = totalsIn(rows, { start: today, end: today });
   const month = totalsIn(rows, period);
-  const budget = settings.monthlyBudget;
-  const left = budget !== undefined ? budget - month.expense : undefined;
+  const bs = budgetStatus(rows, period, settings, categories);
   const recent = rows.filter((r) => r.date <= today).slice(0, 5);
   // 次の旅行：旅行中か、これからの旅行でいちばん近いもの
   const next = trips.find((t) => t.endDate >= today);
@@ -43,15 +44,18 @@ export function HomeScreen({ onEdit }: Props) {
 
       <section className="card">
         <div className="card-label">{periodLabel(period, settings.monthStartDay)}</div>
-        {left !== undefined && (
+        {bs.total && (
           <>
             <div className="hero">
               <span className="muted small">あと </span>
-              <span className={`hero-num ${left < 0 ? 'over' : ''}`}>{yen(left)}</span>
-              <span className="muted small"> 使える（予算 {yen(budget!)}）</span>
+              <span className={`hero-num ${bs.total.left < 0 ? 'over' : ''}`}>{yen(bs.total.left)}</span>
+              <span className="muted small"> 使える</span>
             </div>
             <div className="bar bar-lg">
-              <div className={`bar-fill ${left < 0 ? 'over' : ''}`} style={{ width: `${Math.min(100, (month.expense / Math.max(1, budget!)) * 100)}%` }} />
+              <div className={`bar-fill ${bs.total.left < 0 ? 'over' : ''}`} style={{ width: `${Math.min(100, (bs.total.spent / Math.max(1, bs.total.budget)) * 100)}%` }} />
+            </div>
+            <div className="muted small">
+              予算 {yen(bs.total.budget)} のうち {yen(bs.total.spent)}（旅行は別）
             </div>
           </>
         )}
@@ -69,6 +73,25 @@ export function HomeScreen({ onEdit }: Props) {
             <b className={month.balance < 0 ? 'over' : ''}>{signedYen(month.balance)}</b>
           </div>
         </div>
+        {bs.categories.length > 0 && (
+          <ul className="cat-bars budget-bars">
+            {bs.categories.map((c) => (
+              <li key={c.category.id}>
+                <span className="cat-bar-head">
+                  <span>
+                    {c.category.icon} {c.category.name}
+                  </span>
+                  <span className={c.left < 0 ? 'over' : 'muted'}>
+                    {c.left < 0 ? `${yen(-c.left)} オーバー` : `あと ${yen(c.left)}`}
+                  </span>
+                </span>
+                <span className="bar">
+                  <span className={`bar-fill ${c.left < 0 ? 'over' : ''}`} style={{ width: `${Math.min(100, (c.spent / Math.max(1, c.budget)) * 100)}%` }} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {settings.savingsAmount !== undefined && <SavingsCard settings={settings} rows={rows} />}
