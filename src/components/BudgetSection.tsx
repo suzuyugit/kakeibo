@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { todayYmd } from '../lib/date';
+import { yen } from '../lib/money';
+import { isActive } from '../lib/recurring';
 import type { Category } from '../db/types';
 import { db, updateSettings } from '../db/db';
 import { forSettings } from '../db/categoryRepo';
@@ -16,6 +20,18 @@ export function BudgetSection() {
   const [open, setOpen] = useState(categories.some((c) => c.monthlyBudget !== undefined));
   const list = forSettings(categories, 'expense').filter((c) => !c.hidden);
   const setCat = (c: Category, v: number | undefined) => void db.categories.update(c.id, { monthlyBudget: v });
+  // カテゴリごとの毎月の固定費（今も続いている固定の支出の合計）。予算にそのまま入れられるように
+  const recurrings = useLiveQuery(() => db.recurrings.toArray()) ?? [];
+  const today = todayYmd();
+  const fixedByCat = new Map<string, number>();
+  for (const r of recurrings) {
+    if (r.type !== 'expense' || !isActive(r, today)) continue;
+    fixedByCat.set(r.categoryId, (fixedByCat.get(r.categoryId) ?? 0) + r.amount);
+  }
+  const fillable = list.filter((c) => (fixedByCat.get(c.id) ?? 0) > 0 && c.monthlyBudget !== fixedByCat.get(c.id));
+  const fillAll = () => {
+    for (const c of fillable) setCat(c, fixedByCat.get(c.id));
+  };
 
   return (
     <section className="card">
@@ -54,16 +70,38 @@ export function BudgetSection() {
         {open ? '▲ カテゴリごとの予算を閉じる' : '▼ カテゴリごとにも決める（なくてもよい）'}
       </button>
       {open && (
-        <ul className="budget-cats">
-          {list.map((c) => (
-            <li key={c.id} className="budget-row">
-              <span>
-                {c.icon} {c.name}
-              </span>
-              <BudgetInput key={c.monthlyBudget ?? 'none'} value={c.monthlyBudget} onSave={(v) => setCat(c, v)} label={`${c.name}の予算`} />
-            </li>
-          ))}
-        </ul>
+        <>
+          {fillable.length > 1 && (
+            <button type="button" className="btn btn-ghost btn-block btn-small" onClick={fillAll}>
+              固定費のあるカテゴリ（{fillable.length}つ）に、固定費の額をまとめて入れる
+            </button>
+          )}
+          <ul className="budget-cats">
+            {list.map((c) => {
+              const fixed = fixedByCat.get(c.id) ?? 0;
+              return (
+                <li key={c.id} className="budget-cat">
+                  <div className="budget-row">
+                    <span>
+                      {c.icon} {c.name}
+                    </span>
+                    <BudgetInput key={c.monthlyBudget ?? 'none'} value={c.monthlyBudget} onSave={(v) => setCat(c, v)} label={`${c.name}の予算`} />
+                  </div>
+                  {fixed > 0 && (
+                    <div className="budget-fixed small">
+                      <span className="muted">固定費 毎月 {yen(fixed)}</span>
+                      {c.monthlyBudget !== fixed && (
+                        <button type="button" className="btn-text small" onClick={() => setCat(c, fixed)}>
+                          この額を入れる
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </section>
   );

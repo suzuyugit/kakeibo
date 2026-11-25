@@ -3774,3 +3774,15 @@ button.card.trip-card {
   flex: 1;
   font-size: 20px;
 }
+
+.budget-cat + .budget-cat {
+  border-top: 1px solid var(--border);
+}
+
+.budget-fixed {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 6px;
+}
