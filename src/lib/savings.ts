@@ -2,6 +2,7 @@
 import type { Settings } from '../db/types';
 import type { Row } from './aggregate';
 import { toYmd } from './date';
+import { moneyDate } from './card';
 
 export type SavingsNow = {
   base: number; // 入力した額
@@ -17,13 +18,19 @@ export type SavingsNow = {
  * - 先の日付の記録はまだ足さない
  * 貯金をまだ入れていなければ undefined
  */
-export type SavingsBase = Pick<Settings, 'savingsAmount' | 'savingsAsOf' | 'savingsSetAt'>;
+export type SavingsBase = Pick<Settings, 'savingsAmount' | 'savingsAsOf' | 'savingsSetAt' | 'cardPayDay'>;
 
-/** その記録が、入れた貯金のあとの増減に入るか（先の日付・入れる前のものは入らない） */
+/**
+ * その記録が、入れた貯金のあとの増減に入るか（先の日付・入れる前のものは入らない）。
+ * カードの支出は、使った日ではなく引き落とし日で数える（引き落としがまだなら入らない）
+ */
 export function countsTowardSavings(r: Row, settings: SavingsBase, today: string, setAtDate?: string): boolean {
   const asOf = settings.savingsAsOf;
-  if (!asOf || r.date > today || r.date < asOf) return false;
-  if (r.date > asOf) return true;
+  const d = moneyDate(r, settings.cardPayDay);
+  if (!asOf || d > today || d < asOf) return false;
+  if (d > asOf) return true;
+  // 入れた日に引き落とされたカードの分は、もう口座に入っているとみなす
+  if (d !== r.date) return false;
   // 入れた日と同じ日の記録は、入れたあとに記録したものだけ（旅行の支出は入っているとみなす）
   const setAt = settings.savingsSetAt;
   const setDay = setAtDate ?? (setAt ? toYmd(new Date(setAt)) : undefined);

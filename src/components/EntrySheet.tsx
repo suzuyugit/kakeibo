@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { Entry, EntryType, PaymentMethod } from '../db/types';
 import { deleteEntry, lastPaymentMethod, restoreEntry, saveEntry, validateEntry } from '../db/entryRepo';
 import { forPicker } from '../db/categoryRepo';
-import { useCategories } from '../hooks/useData';
+import { useCategories, useSettings } from '../hooks/useData';
+import { withdrawalDate } from '../lib/card';
 import { formatMd, parseYmd, todayYmd, toYmd } from '../lib/date';
 import { parseYen, yen } from '../lib/money';
 import { PAYMENT_LABEL, PAYMENT_METHODS } from '../lib/labels';
@@ -26,6 +27,7 @@ function yesterdayYmd(): string {
 /** 収入・支出のクイック入力（編集にも使う）。最短で「金額 → カテゴリ → 保存」 */
 export function EntrySheet({ entry, initialDate, onClose }: Props) {
   const categories = useCategories();
+  const settings = useSettings();
   const [type, setType] = useState<EntryType>(entry?.type ?? 'expense');
   const [amount, setAmount] = useState(entry ? String(entry.amount) : '');
   const [categoryId, setCategoryId] = useState(entry?.categoryId ?? '');
@@ -179,6 +181,9 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
                 </button>
               ))}
             </div>
+            {paymentMethod === 'card' && settings.cardPayDay && (
+              <span className="muted small">💳 {formatMd(withdrawalDate(date, settings.cardPayDay))} に引き落とし</span>
+            )}
           </div>
         )}
 

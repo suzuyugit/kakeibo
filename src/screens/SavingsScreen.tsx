@@ -8,6 +8,7 @@ import { useForecast } from '../hooks/useForecast';
 import { yen } from '../lib/money';
 import { pastSeries } from '../lib/forecast';
 import { countsTowardSavings } from '../lib/savings';
+import { moneyDate } from '../lib/card';
 import { navigate } from '../router';
 
 export function SavingsScreen() {
@@ -20,7 +21,7 @@ export function SavingsScreen() {
     return <SavingsCard settings={settings} rows={rows} />;
   }
 
-  const past = pastSeries(fc.savings.base, fc.savings.asOf, rows, fc.today, (r) => countsTowardSavings(r, settings, fc.today));
+  const past = pastSeries(fc.savings.base, fc.savings.asOf, rows, fc.today, (r) => countsTowardSavings(r, settings, fc.today), (r) => moneyDate(r, settings.cardPayDay));
   const perMonth = Math.round(fc.daily.perDay * 30);
   const fixedIn = fc.recurrings.filter((r) => r.type === 'income' && !r.endMonth).reduce((a, r) => a + r.amount, 0);
   const fixedOut = fc.recurrings.filter((r) => r.type === 'expense' && !r.endMonth).reduce((a, r) => a + r.amount, 0);
@@ -71,6 +72,9 @@ export function SavingsScreen() {
             </span>
           </li>
           <li>旅行の分は、予算（なければ見積もり）からもう使った額を引いて、出発日に出ていくとみなします</li>
+          {settings.cardPayDay ? (
+            <li>カードで払った分は、翌月{settings.cardPayDay}日の引き落とし日に減ります</li>
+          ) : null}
         </ul>
         {fc.daily.basis === 'none' && (
           <button type="button" className="btn btn-ghost btn-block" onClick={() => navigate({ name: 'settings' })}>

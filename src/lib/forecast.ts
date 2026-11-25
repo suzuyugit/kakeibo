@@ -69,6 +69,8 @@ export type ForecastInput = {
   recurrings: Recurring[];
   perDay: number;
   trips: LedgerTrip[];
+  /** これから引き落とされるカードの分（もう使った分） */
+  cardOut?: { date: string; amount: number }[];
 };
 
 /** その日の終わりの貯金の見込み（今日より後の日）。その日に出ていく旅行の分は、引く前（includeTripsOn=false）か後か */
@@ -76,6 +78,7 @@ export function projectedAt(input: ForecastInput, date: string, includeTripsOn =
   const { savings, today, recurrings, perDay, trips } = input;
   if (date <= today) return savings;
   const fixed = fixedBetween(recurrings, today, date).reduce((a, f) => a + f.signed, 0);
+  const card = (input.cardOut ?? []).filter((c) => c.date > today && c.date <= date).reduce((a, c) => a + c.amount, 0);
   const days = dayCount(today, date) - 1;
   const tripsOut = trips
     .filter((t) => t.endDate >= today)
@@ -84,7 +87,7 @@ export function projectedAt(input: ForecastInput, date: string, includeTripsOn =
       return includeTripsOn ? d <= date : d < date;
     })
     .reduce((a, t) => a + tripNeed(t), 0);
-  return Math.round(savings + fixed - perDay * days - tripsOut);
+  return Math.round(savings + fixed - card - perDay * days - tripsOut);
 }
 
 export type TripForecast = {
@@ -121,14 +124,22 @@ export function tripForecasts(input: ForecastInput): TripForecast[] {
     });
 }
 
-/** グラフ用：これまで（入れた日から今日まで）の貯金の推移 */
-export function pastSeries(base: number, asOf: string, rows: Row[], today: string, change: (r: Row) => boolean): { date: string; value: number }[] {
+/** グラフ用：これまで（入れた日から今日まで）の貯金の推移。dateOf はお金が出入りした日（カードは引き落とし日） */
+export function pastSeries(
+  base: number,
+  asOf: string,
+  rows: Row[],
+  today: string,
+  change: (r: Row) => boolean,
+  dateOf: (r: Row) => string = (r) => r.date,
+): { date: string; value: number }[] {
   const out: { date: string; value: number }[] = [];
   let v = base;
   const byDay = new Map<string, number>();
   for (const r of rows) {
     if (!change(r)) continue;
-    byDay.set(r.date, (byDay.get(r.date) ?? 0) + (r.type === 'income' ? r.amount : -r.amount));
+    const d = dateOf(r);
+    byDay.set(d, (byDay.get(d) ?? 0) + (r.type === 'income' ? r.amount : -r.amount));
   }
   for (let d = asOf; d <= today; d = addDays(d, 1)) {
     v += byDay.get(d) ?? 0;

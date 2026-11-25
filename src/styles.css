@@ -3248,3 +3248,12 @@ button.card.trip-card {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.card-pending {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

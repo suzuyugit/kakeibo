@@ -38,6 +38,27 @@ export function SettingsScreen() {
       <BudgetSection />
 
       <section className="card">
+        <h3 className="card-title">💳 カードの引き落とし</h3>
+        <label className="field">
+          <span className="label">カードで払った分が口座から出る日</span>
+          <select
+            value={settings.cardPayDay ?? 0}
+            onChange={(e) => void updateSettings({ cardPayDay: Number(e.target.value) || undefined })}
+          >
+            <option value={0}>使った日に減る（分けない）</option>
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>
+                翌月{d}日{d >= 29 ? '（ない月は月末）' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="muted small">
+          月末締めで、その月にカードで払った分が翌月のこの日にまとめて引き落とされるとして、今の貯金と見込みを計算します。カレンダーや予算は、使った日のままです。
+        </p>
+      </section>
+
+      <section className="card">
         <h3 className="card-title">月の始まり</h3>
         <label className="field">
           <span className="label">毎月の開始日</span>

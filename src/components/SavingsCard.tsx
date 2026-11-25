@@ -4,13 +4,16 @@ import type { Row } from '../lib/aggregate';
 import { formatMd, todayYmd } from '../lib/date';
 import { signedYen, yen } from '../lib/money';
 import { savingsNow } from '../lib/savings';
+import { pendingCard } from '../lib/card';
 import { SavingsForm } from './SavingsForm';
 import { Sheet } from './Sheet';
 
 /** ホームの貯金カード。まだ入れていなければ、入れる欄を出す */
 export function SavingsCard({ settings, rows }: { settings: Settings; rows: Row[] }) {
   const [editing, setEditing] = useState(false);
-  const s = savingsNow(settings, rows, todayYmd());
+  const today = todayYmd();
+  const s = savingsNow(settings, rows, today);
+  const card = pendingCard(rows, settings.cardPayDay, today);
 
   if (!s) {
     return (
@@ -37,6 +40,20 @@ export function SavingsCard({ settings, rows }: { settings: Settings; rows: Row[
         {formatMd(s.asOf)}に入れた {yen(s.base)}
         {s.change !== 0 && <> ／ その後の収支 {signedYen(s.change)}</>}
       </div>
+      {card.length > 0 && (
+        <div className="card-pending">
+          {card.map((c) => (
+            <div key={c.date} className="forecast-row">
+              <span className="muted small">💳 {formatMd(c.date)} にカードの引き落とし</span>
+              <b>−{yen(c.amount)}</b>
+            </div>
+          ))}
+          <div className="forecast-row">
+            <span className="muted small">引き落としのあと</span>
+            <b>{yen(s.total - card.reduce((a, c) => a + c.amount, 0))}</b>
+          </div>
+        </div>
+      )}
       {editing && (
         <Sheet title="今の貯金を入力し直す" onClose={() => setEditing(false)}>
           <SavingsForm initialAmount={s.total} autoFocus onSaved={() => setEditing(false)} />
