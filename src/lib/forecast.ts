@@ -38,7 +38,7 @@ export type DailySpend = {
  * - 30日未満で月の予算があれば、（予算 − 固定費）÷ 30
  * - 予算もなければ、7日以上あれば記録の平均（少なめの記録）、それもなければ 0
  */
-export function dailySpend(rows: Row[], today: string, settings: Pick<Settings, 'monthlyBudget'>, recurrings: Recurring[]): DailySpend {
+export function dailySpend(rows: Row[], today: string, settings: Pick<Settings, 'monthlyBudget' | 'budgetExcludesFixed'>, recurrings: Recurring[]): DailySpend {
   const variable = rows.filter((r) => r.type === 'expense' && r.entry && !r.entry.recurringId && r.date <= today);
   const first = variable.reduce<string | undefined>((m, r) => (!m || r.date < m ? r.date : m), undefined);
   const days = first ? Math.min(90, dayCount(first, today)) : 0;
@@ -47,7 +47,8 @@ export function dailySpend(rows: Row[], today: string, settings: Pick<Settings, 
   if (days >= 30) return { perDay: sum / days, basis: 'actual', days };
   if (settings.monthlyBudget !== undefined) {
     const fixedOut = recurrings.filter((r) => r.type === 'expense' && isActive(r, today)).reduce((a, r) => a + r.amount, 0);
-    return { perDay: Math.max(0, settings.monthlyBudget - fixedOut) / 30, basis: 'budget', days };
+    const free = settings.budgetExcludesFixed ? settings.monthlyBudget : settings.monthlyBudget - fixedOut;
+    return { perDay: Math.max(0, free) / 30, basis: 'budget', days };
   }
   if (days >= 7) return { perDay: sum / days, basis: 'few', days };
   return { perDay: 0, basis: 'none', days };

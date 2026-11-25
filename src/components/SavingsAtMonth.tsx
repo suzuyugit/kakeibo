@@ -12,6 +12,8 @@ type Props = {
   marks: { date: string; name: string }[];
   /** 月の予算（全体）。決めていれば、そこから固定費を引いた額を初期値にする */
   budget?: number;
+  /** 月の予算が固定費を除いた額（自由に使える額）か */
+  budgetExcludesFixed?: boolean;
   /** 毎月の固定費の合計 */
   fixedOut: number;
   /** 毎月の固定の収入の合計 */
@@ -115,16 +117,18 @@ function MonthlyField(props: {
  * 貯金の見込み：1か月の収入と支出を決めると、グラフと、スライドして選んだ月の「このままいけば ○円」と内訳が出る。
  * 収入・支出それぞれ、固定の収入・固定費を含めた額か、含めない額かを選べる
  */
-export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, fixedOut, fixedIn, incomeAverage }: Props) {
+export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, budgetExcludesFixed, fixedOut, fixedIn, incomeAverage }: Props) {
   const recordAverage = Math.round(base.perDay * 30); // 記録からの支出の平均（固定費を含まない）
   const [plan, setPlan] = useState<Plan>(loadPlan);
   const update = (p: Plan) => {
     setPlan(p);
     savePlan(p);
   };
-  // 支出：予算を決めていれば予算（固定費を含む）、なければ記録の平均（含まない）
-  const spendWithFixed = plan.spendWithFixed ?? budget !== undefined;
-  const spendDefault = spendWithFixed ? (budget ?? recordAverage + fixedOut) : budget !== undefined ? Math.max(0, budget - fixedOut) : recordAverage;
+  // 支出の初めの額：予算を決めていれば予算（予算の決め方に合わせて固定費を含む／含まない）、なければ記録の平均（含まない）
+  const budgetWithFixed = budget !== undefined && !budgetExcludesFixed;
+  const spendWithFixed = plan.spendWithFixed ?? budgetWithFixed;
+  const budgetFree = budget === undefined ? undefined : budgetExcludesFixed ? budget : Math.max(0, budget - fixedOut); // 固定費を除いた額
+  const spendDefault = spendWithFixed ? (budgetFree ?? recordAverage) + fixedOut : (budgetFree ?? recordAverage);
   const spend = plan.spend ?? spendDefault;
   // 収入：固定の収入 + 記録からの固定以外の収入の平均
   const incomeDefault = plan.incomeWithFixed ? fixedIn + incomeAverage : incomeAverage;
@@ -170,7 +174,7 @@ export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, f
           withFixed={spendWithFixed}
           fixed={fixedOut}
           fixedLabel="固定費"
-          note={budget !== undefined ? `（初めの額は月の予算 ${yen(budget)} から）` : '（初めの額は、これまでの記録の平均から）'}
+          note={budget !== undefined ? `（初めの額は月の予算 ${yen(budget)}${budgetExcludesFixed ? '（固定費を除く）' : '（固定費を含む）'} から）` : '（初めの額は、これまでの記録の平均から）'}
           changed={plan.spend !== undefined}
           onChange={(v) => update({ ...plan, spend: v, spendWithFixed })}
           onMode={(w) => w !== spendWithFixed && update({ ...plan, spendWithFixed: w, spend: plan.spend === undefined ? undefined : Math.max(0, plan.spend + (w ? fixedOut : -fixedOut)) })}

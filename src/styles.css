@@ -3718,3 +3718,7 @@ button.card.trip-card {
 .monthly-net b {
   font-size: 20px;
 }
+
+.budget-mode {
+  margin-bottom: 8px;
+}

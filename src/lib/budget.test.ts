@@ -14,7 +14,7 @@ describe('予算', () => {
   const p = { start: '2026-11-01', end: '2026-11-30' };
 
   it('全体の予算は旅行以外の支出と比べる', () => {
-    expect(budgetStatus(rows, p, { monthlyBudget: 50000 }, []).total).toEqual({ budget: 50000, spent: 8000, left: 42000 });
+    expect(budgetStatus(rows, p, { monthlyBudget: 50000 }, []).total).toEqual({ budget: 50000, spent: 8000, left: 42000, excludesFixed: false });
     expect(budgetStatus(rows, p, {}, []).total).toBeUndefined();
   });
 
@@ -24,5 +24,11 @@ describe('予算', () => {
       ['food', 3000, -1000],
       ['cat-travel', 20000, 10000],
     ]);
+  });
+
+  it('固定費を除いた予算（自由に使える額）なら、固定から入った記録は比べない', () => {
+    const fixed: Row = { ...row('2026-11-27', 20000, 'home'), entry: { categoryId: 'home', recurringId: 'r' } as Entry };
+    expect(budgetStatus([...rows, fixed], p, { monthlyBudget: 50000 }, []).total!.spent).toBe(28000);
+    expect(budgetStatus([...rows, fixed], p, { monthlyBudget: 50000, budgetExcludesFixed: true }, []).total).toEqual({ budget: 50000, spent: 8000, left: 42000, excludesFixed: true });
   });
 });

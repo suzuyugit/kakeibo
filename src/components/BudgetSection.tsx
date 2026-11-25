@@ -44,12 +44,35 @@ export function BudgetSection() {
   return (
     <section className="card">
       <h3 className="card-title">月の予算</h3>
+      <div className="chips budget-mode" role="radiogroup" aria-label="予算に固定費を含めるか">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!settings.budgetExcludesFixed}
+          className={`pick ${!settings.budgetExcludesFixed ? 'active' : ''}`}
+          onClick={() => void updateSettings({ budgetExcludesFixed: undefined })}
+        >
+          固定費込み
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!!settings.budgetExcludesFixed}
+          className={`pick ${settings.budgetExcludesFixed ? 'active' : ''}`}
+          onClick={() => void updateSettings({ budgetExcludesFixed: true })}
+        >
+          固定費抜き（自由に使える額）
+        </button>
+      </div>
       <div className="budget-row">
-        <span>1か月に使う額</span>
+        <span>{settings.budgetExcludesFixed ? '1か月に自由に使える額' : '1か月に使う額'}</span>
         <BudgetInput key={settings.monthlyBudget ?? 'none'} value={settings.monthlyBudget} onSave={(v) => void updateSettings({ monthlyBudget: v })} label="1か月に使う額" />
       </div>
       <p className="muted small">
-        家賃や通信などの固定費も含めた、旅行以外の支出の予算です。ホームに「今月あと○円使える」が出ます。空にすると予算なしになります。
+        {settings.budgetExcludesFixed
+          ? '家賃や通信などの固定費を除いた、旅行以外の支出の予算です（固定から自動で入った記録は数えません）。'
+          : '家賃や通信などの固定費も含めた、旅行以外の支出の予算です。'}
+        ホームに「今月あと○円使える」が出ます。空にすると予算なしになります。
       </p>
       <button type="button" className="btn-text" onClick={() => setOpen((v) => !v)}>
         {open ? '▲ カテゴリごとの予算を閉じる' : '▼ カテゴリごとにも決める（なくてもよい）'}

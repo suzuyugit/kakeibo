@@ -59,7 +59,7 @@ export function HomeScreen({ onEdit }: Props) {
               <div className={`bar-fill ${bs.total.left < 0 ? 'over' : ''}`} style={{ width: `${Math.min(100, (bs.total.spent / Math.max(1, bs.total.budget)) * 100)}%` }} />
             </div>
             <div className="muted small">
-              予算 {yen(bs.total.budget)} のうち {yen(bs.total.spent)}（旅行は別）
+              予算 {yen(bs.total.budget)} のうち {yen(bs.total.spent)}（旅行{bs.total.excludesFixed ? '・固定費' : ''}は別）
             </div>
           </>
         )}

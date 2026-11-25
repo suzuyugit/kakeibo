@@ -51,6 +51,7 @@ export function SavingsScreen() {
         past={past}
         marks={fc.forecasts.map((f) => ({ date: f.ongoing ? fc.today : f.trip.startDate, name: f.trip.name }))}
         budget={settings.monthlyBudget}
+        budgetExcludesFixed={settings.budgetExcludesFixed}
         fixedOut={fixedOut}
         fixedIn={fixedIn}
         incomeAverage={incomeAverage}
