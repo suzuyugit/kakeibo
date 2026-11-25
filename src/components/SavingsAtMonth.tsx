@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { SavingsChart } from './SavingsChart';
 import { breakdownAt, type ForecastInput } from '../lib/forecast';
 import { monthEnds } from '../lib/chartData';
-import { signedYen, yen } from '../lib/money';
+import { parseYen, signedYen, yen } from '../lib/money';
 import { addMonths, monthOf } from '../lib/recurring';
 
 type Props = {
@@ -12,8 +12,41 @@ type Props = {
   marks: { date: string; name: string }[];
 };
 
-/** 貯金の見込み：グラフと、スライドして選んだ月の「このままいけば ○円」と内訳 */
-export function SavingsAtMonth({ input, tripMonths, past, marks }: Props) {
+const SPEND_KEY = 'kakeibo.forecastMonthlySpend';
+
+function loadSpend(): number | undefined {
+  try {
+    const v = Number(localStorage.getItem(SPEND_KEY));
+    return Number.isFinite(v) && v > 0 ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveSpend(v: number | undefined) {
+  try {
+    if (v === undefined) localStorage.removeItem(SPEND_KEY);
+    else localStorage.setItem(SPEND_KEY, String(v));
+  } catch {
+    // 覚えられなくてもよい
+  }
+}
+
+/**
+ * 貯金の見込み：グラフと、スライドして選んだ月の「このままいけば ○円」と内訳。
+ * 「1か月に使う額」を変えると、その額で使ったとしたときの見込みに変わる（このカードの中だけ）
+ */
+export function SavingsAtMonth({ input: base, tripMonths, past, marks }: Props) {
+  const average = Math.round(base.perDay * 30);
+  const [spend, setSpend] = useState<number | undefined>(loadSpend);
+  const [spendText, setSpendText] = useState(() => (spend ?? average).toLocaleString('ja-JP'));
+  const input = useMemo(() => (spend !== undefined ? { ...base, perDay: spend / 30 } : base), [base, spend]);
+  const changeSpend = (v: number | undefined) => {
+    setSpend(v);
+    saveSpend(v);
+    setSpendText((v ?? average).toLocaleString('ja-JP'));
+  };
+  const step = (d: number) => changeSpend(Math.max(0, (spend ?? average) + d));
   const months = monthEnds(monthOf(input.today), addMonths(monthOf(input.today), 35));
   const [idx, setIdx] = useState(1); // 0 = 今月
   const month = months[idx].month;
@@ -25,6 +58,45 @@ export function SavingsAtMonth({ input, tripMonths, past, marks }: Props) {
   return (
     <section className="card">
       <h3 className="card-title">貯金の見込み</h3>
+      <div className="spend-box">
+        <span className="label">ふだん1か月に使う額</span>
+        <div className="spend-row">
+          <button type="button" className="icon-btn" onClick={() => step(-10000)} aria-label="1万円へらす">
+            −1万
+          </button>
+          <label className="spend-input">
+            <input
+              inputMode="numeric"
+              value={spendText}
+              onChange={(e) => setSpendText(e.target.value)}
+              onFocus={(e) => setSpendText(e.target.value.replace(/,/g, ''))}
+              onBlur={() => {
+                const n = parseYen(spendText);
+                if (n === undefined || Number.isNaN(n)) setSpendText((spend ?? average).toLocaleString('ja-JP'));
+                else changeSpend(n === average ? undefined : n);
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+              aria-label="ふだん1か月に使う額"
+            />
+            <span>円</span>
+          </label>
+          <button type="button" className="icon-btn" onClick={() => step(10000)} aria-label="1万円ふやす">
+            +1万
+          </button>
+        </div>
+        <span className="muted small">
+          {spend === undefined ? (
+            <>記録からの見込み（固定費と旅行を除く）。変えると「これだけ使ったら」の見込みになります。</>
+          ) : (
+            <>
+              記録からの見込みは約 {yen(average)}。
+              <button type="button" className="btn-text small" onClick={() => changeSpend(undefined)}>
+                そちらに戻す
+              </button>
+            </>
+          )}
+        </span>
+      </div>
       <SavingsChart past={past} input={input} marks={marks} focus={end} />
       <p className="muted small slider-help">下のつまみを左右にスライドすると、その月の終わりの貯金の見込みが出ます。</p>
       <div className="slider-head">
@@ -82,7 +154,7 @@ export function SavingsAtMonth({ input, tripMonths, past, marks }: Props) {
         )}
         {b.daily > 0 && (
           <li>
-            <span>ふだんの支出（見込み）</span>
+            <span>ふだんの支出（1か月 {yen(spend ?? average)}）</span>
             <b className="minus">−{yen(b.daily)}</b>
           </li>
         )}
