@@ -5,7 +5,9 @@ import { forPicker } from '../db/categoryRepo';
 import { useCategories, useSettings } from '../hooks/useData';
 import { withdrawalDate } from '../lib/card';
 import { formatMd, parseYmd, todayYmd, toYmd } from '../lib/date';
-import { parseYen, yen } from '../lib/money';
+import { yen } from '../lib/money';
+import { evaluate } from '../lib/calc';
+import { AmountPad } from './AmountPad';
 import { PAYMENT_LABEL, PAYMENT_METHODS } from '../lib/labels';
 import { CategorySheet } from './CategorySheet';
 import { Sheet } from './Sheet';
@@ -43,7 +45,7 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
   // 編集中の記録のカテゴリが非表示でも、選んだまま見えるように
   const current = categories.find((c) => c.id === categoryId);
   if (current && current.type === type && !picks.includes(current)) picks.unshift(current);
-  const amountNum = parseYen(amount);
+  const amountNum = evaluate(amount);
 
   const switchType = (t: EntryType) => {
     if (t === type) return;
@@ -54,7 +56,7 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
 
   const save = async () => {
     const input = { type, date, amount: amountNum ?? 0, categoryId, paymentMethod: type === 'expense' ? paymentMethod : undefined, memo };
-    const msg = Number.isNaN(amountNum) ? '金額は数字で入れてください' : validateEntry(input);
+    const msg = Number.isNaN(amountNum) ? '計算式が正しくありません' : amountNum !== undefined && amountNum <= 0 ? '金額が0円以下です' : validateEntry(input);
     if (msg) return setError(msg);
     await saveEntry(input, entry?.id);
     showToast(entry ? '保存しました' : `${type === 'expense' ? '支出' : '収入'} ${yen(input.amount)} を記録しました`);
@@ -133,21 +135,14 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
           </p>
         )}
 
-        <label className={`amount-field ${type}`}>
-          <span className="yen">¥</span>
-          <input
-            className="amount-input"
-            inputMode="numeric"
-            value={amount}
-            onChange={(e) => {
-              setAmount(e.target.value);
-              setError('');
-            }}
-            placeholder="0"
-            autoFocus
-            aria-label="金額"
-          />
-        </label>
+        <AmountPad
+          value={amount}
+          type={type}
+          onChange={(v) => {
+            setAmount(v);
+            setError('');
+          }}
+        />
 
         <div className="cat-grid" role="radiogroup" aria-label="カテゴリ">
           {picks.map((c) => (

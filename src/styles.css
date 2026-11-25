@@ -3514,3 +3514,97 @@ button.card.trip-card {
   display: flex;
   justify-content: space-between;
 }
+
+/* 金額の専用キーボード（計算式も使える） */
+.amount-pad {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.amount-display {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--surface);
+  min-height: 64px;
+  flex-wrap: wrap;
+}
+
+.amount-display .yen {
+  font-size: 22px;
+  color: var(--muted);
+}
+
+.amount-expr {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  word-break: break-all;
+}
+
+.amount-expr.with-op {
+  font-size: 24px;
+}
+
+.amount-expr.placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.amount-display.income .amount-expr:not(.placeholder) {
+  color: var(--income);
+}
+
+.amount-result {
+  margin-left: auto;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.pad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 46px;
+  gap: 6px;
+}
+
+.pad-key {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.pad-key:active {
+  background: var(--primary-weak);
+}
+
+.pad-key.op {
+  background: var(--primary-weak);
+  color: var(--primary);
+}
+
+.pad-key.fn {
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.pad-key.eq {
+  grid-row: span 2;
+  background: var(--primary);
+  color: #fff;
+}
+
+.pad-key.zero {
+  grid-column: span 2;
+}

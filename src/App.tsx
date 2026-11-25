@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Entry } from './db/types';
 import { navigate, useRoute, type TabKey } from './router';
 import { ToastHost } from './components/Toast';
@@ -25,7 +25,6 @@ export function App() {
   const route = useRoute();
   const [sheet, setSheet] = useState<{ entry?: Entry; date?: string } | null>(null);
   const [day, setDay] = useState(todayYmd);
-  const keyboardProxy = useRef<HTMLInputElement>(null);
 
   // 開いたとき・戻ってきたときに、日が来た固定の収入・支出を入れる
   useEffect(() => {
@@ -45,8 +44,6 @@ export function App() {
   }, [route.name]);
 
   const openNew = (date?: string) => {
-    // ページを動かさずにフォーカスしておくと、iPhone でもシートの金額欄でキーボードが開く
-    keyboardProxy.current?.focus({ preventScroll: true });
     setSheet({ date });
   };
   const edit = (entry: Entry) => setSheet({ entry });
@@ -72,7 +69,6 @@ export function App() {
         )}
       </main>
 
-      <input ref={keyboardProxy} className="keyboard-proxy" inputMode="numeric" tabIndex={-1} aria-hidden="true" />
       <button className="fab" aria-label="記録する" onClick={() => openNew(route.name === 'calendar' ? day : undefined)}>
         ＋
       </button>
