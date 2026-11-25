@@ -173,7 +173,8 @@ type Settings = {
   monthStartDay: number;     // 1〜28
   monthlyBudget?: number;    // 全体の予算
   savingsAmount: number;     // 入力した貯金の額
-  savingsAsOf: string;       // その額がいつの終わりの額か
+  savingsAsOf: string;       // その額がいつの時点の額か
+  savingsSetAt?: string;     // 貯金を入れた日時
   ledgerExportedAt?: string; // 最後に取り込んだデータの送った日時
 };
 
@@ -197,9 +198,12 @@ type Settings = {
 
 ### 今の貯金
 
-- 今の貯金 = `savingsAmount` + `savingsAsOf` の**翌日以降**の（収入 − 支出 − 旅行の負担分）
-- 「入力し直す」と、`savingsAsOf` = 今日、`savingsAmount` = 入力した額にする（今日の分は口座に反映済みとみなす）
-- 初めて開いたときに、この入力を最初に聞く
+- 今の貯金 = `savingsAmount` + 入れた時点より後の（収入 − 支出 − 旅行の負担分）
+  - 「いつの額」（`savingsAsOf`）より前の日付の記録は、もう入っているとみなして足さない
+  - 「いつの額」が貯金を入れた日（今日）なら、その日の記録は入れたあと（`savingsSetAt` より後）に記録したものだけ足す。過去の日にしたら、その日の記録は全部入っているとみなす
+  - 先の日付の記録はまだ足さない
+- 「入力し直す」と、今の計算の額を初期値にした欄を出し、入れた額と日付で作り直す
+- 貯金をまだ入れていなければ、ホームのいちばん上に入れる欄を出す
 
 ### 旅行の日の貯金見込み
 

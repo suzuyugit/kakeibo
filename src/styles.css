@@ -2940,3 +2940,19 @@ a.card.trip-card {
   font-size: 14px;
   font-family: ui-monospace, monospace;
 }
+
+/* 今の貯金 */
+.savings-first {
+  border: 2px solid var(--primary);
+}
+
+.field-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.field-inline .label {
+  white-space: nowrap;
+}

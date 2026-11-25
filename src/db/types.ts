@@ -48,7 +48,8 @@ export type Settings = {
   monthStartDay: number; // 1〜28
   monthlyBudget?: number; // 全体の予算
   savingsAmount?: number; // 入力した貯金の額
-  savingsAsOf?: string; // その額がいつの終わりの額か
+  savingsAsOf?: string; // その額がいつの時点の額か（YYYY-MM-DD）
+  savingsSetAt?: string; // 貯金を入れた日時（ISO）。入れた日と同じ日の記録は、これより後に記録したものだけ足す
   ledgerExportedAt?: string; // 最後に取り込んだ、たびメモのデータを送った日時
 };
 

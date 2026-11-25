@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { Entry } from '../db/types';
 import { db } from '../db/db';
 import { RowList } from '../components/RowList';
+import { SavingsCard } from '../components/SavingsCard';
 import { formatExportedAt, LedgerImportButton } from '../components/LedgerImport';
 import { useRows, useSettings } from '../hooks/useData';
 import { totalsIn } from '../lib/aggregate';
@@ -30,6 +31,8 @@ export function HomeScreen({ onEdit }: Props) {
 
   return (
     <>
+      {settings.savingsAmount === undefined && <SavingsCard settings={settings} rows={rows} />}
+
       <section className="card">
         <div className="card-label">今日使った額</div>
         <div className="hero">
@@ -67,6 +70,8 @@ export function HomeScreen({ onEdit }: Props) {
           </div>
         </div>
       </section>
+
+      {settings.savingsAmount !== undefined && <SavingsCard settings={settings} rows={rows} />}
 
       {next && (
         <a className="card trip-card" href={tabimemoMoneyUrl(next.tripId)}>
