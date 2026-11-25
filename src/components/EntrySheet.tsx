@@ -9,7 +9,7 @@ import { formatMd, parseYmd, todayYmd, toYmd } from '../lib/date';
 import { yen } from '../lib/money';
 import { evaluate } from '../lib/calc';
 import { AmountPad } from './AmountPad';
-import { PAYMENT_LABEL, PAYMENT_METHODS } from '../lib/labels';
+import { PAYMENT_LABEL, PAYMENT_METHODS, payKind } from '../lib/labels';
 import { CategorySheet } from './CategorySheet';
 import { Sheet } from './Sheet';
 import { showToast } from './Toast';
@@ -34,7 +34,7 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
   const [type, setType] = useState<EntryType>(entry?.type ?? 'expense');
   const [amount, setAmount] = useState(entry ? String(entry.amount) : '');
   const [categoryId, setCategoryId] = useState(entry?.categoryId ?? '');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(entry?.paymentMethod ?? lastPaymentMethod());
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(entry ? payKind(entry.paymentMethod) : lastPaymentMethod());
   const [date, setDate] = useState(entry?.date ?? initialDate ?? todayYmd());
   const [memo, setMemo] = useState(entry?.memo ?? '');
   // 収入：その日に入るか、翌月の決めた日に振り込まれるか（給料など）。前回の選び方を覚えておく
@@ -249,7 +249,7 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
 
         {type === 'expense' && (
           <div className="field">
-            <span className="label">支払い方法</span>
+            <span className="label">払い方</span>
             <div className="chips" role="radiogroup">
               {PAYMENT_METHODS.map((pm) => (
                 <button
@@ -264,9 +264,12 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
                 </button>
               ))}
             </div>
-            {paymentMethod === 'card' && settings.cardPayDay && (
-              <span className="muted small">💳 {formatMd(withdrawalDate(date, settings.cardPayDay, settings.cardCloseDay))} に引き落とし</span>
-            )}
+            {paymentMethod === 'card' &&
+              (settings.cardPayDay ? (
+                <span className="muted small">💳 {formatMd(withdrawalDate(date, settings.cardPayDay, settings.cardCloseDay))} に引き落とし</span>
+              ) : (
+                <span className="muted small">設定の「カードの引き落とし」で引き落とし日を決めると、翌月のその日に貯金から減ります（決めるまでは使った日に減ります）。</span>
+              ))}
           </div>
         )}
 

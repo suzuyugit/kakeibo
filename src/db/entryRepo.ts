@@ -8,7 +8,8 @@ const LAST_PAYMENT_KEY = 'kakeibo.lastPaymentMethod';
 export function lastPaymentMethod(): PaymentMethod {
   try {
     const v = localStorage.getItem(LAST_PAYMENT_KEY);
-    if (v === 'cash' || v === 'card' || v === 'paypay' || v === 'bank' || v === 'other') return v;
+    if (v === 'card') return 'card';
+    if (v) return 'cash'; // 即時払い（前の現金・PayPay なども）
   } catch {
     // 使えない環境では初期値
   }

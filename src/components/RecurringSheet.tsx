@@ -4,7 +4,7 @@ import { forPicker } from '../db/categoryRepo';
 import { saveRecurring, stopRecurring } from '../db/recurringRepo';
 import { useCategories } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
-import { PAYMENT_LABEL, PAYMENT_METHODS } from '../lib/labels';
+import { PAYMENT_LABEL, PAYMENT_METHODS, payKind } from '../lib/labels';
 import { parseYen, yen } from '../lib/money';
 import { addMonths, countOccurrences, dateFor, firstMonthOnOrAfter, lastMonthOnOrBefore, monthOf, upcomingMonth } from '../lib/recurring';
 import { formatMd } from '../lib/date';
@@ -22,7 +22,7 @@ export function RecurringSheet({ recurring, onClose }: Props) {
   const [amount, setAmount] = useState(recurring ? String(recurring.amount) : '');
   const [day, setDay] = useState(recurring?.dayOfMonth ?? 25);
   const [categoryId, setCategoryId] = useState(recurring?.categoryId ?? '');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(recurring?.paymentMethod ?? 'bank');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(payKind(recurring?.paymentMethod));
   const [payFor, setPayFor] = useState<'same' | 'prev'>(recurring?.payFor ?? 'same');
   const [error, setError] = useState('');
   const [addingCat, setAddingCat] = useState(false);
@@ -221,7 +221,7 @@ export function RecurringSheet({ recurring, onClose }: Props) {
 
         {type === 'expense' && (
           <div className="field">
-            <span className="label">支払い方法</span>
+            <span className="label">払い方</span>
             <div className="chips">
               {PAYMENT_METHODS.map((pm) => (
                 <button key={pm} type="button" className={`pick ${pm === paymentMethod ? 'active' : ''}`} onClick={() => setPaymentMethod(pm)}>
