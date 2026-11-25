@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import type { Category, EntryType } from '../db/types';
-import { updateSettings } from '../db/db';
+import { db, updateSettings } from '../db/db';
 import { forSettings, reorderCategories } from '../db/categoryRepo';
 import { CategorySheet } from '../components/CategorySheet';
+import { formatExportedAt, LedgerImportButton } from '../components/LedgerImport';
 import { useCategories, useSettings } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
 import { periodLabel, periodOf } from '../lib/period';
@@ -13,6 +15,7 @@ export function SettingsScreen() {
   const [type, setType] = useState<EntryType>('expense');
   const [editing, setEditing] = useState<{ category?: Category } | null>(null);
   const list = forSettings(categories, type);
+  const ledger = useLiveQuery(async () => ({ trips: await db.tripLedger.count(), entries: await db.tripEntries.count() }));
 
   const move = (i: number, d: -1 | 1) => {
     const ids = list.map((c) => c.id);
@@ -78,6 +81,19 @@ export function SettingsScreen() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="card">
+        <h3 className="card-title">たびメモとの連携</h3>
+        <p className="small">
+          {settings.ledgerExportedAt
+            ? `${formatExportedAt(settings.ledgerExportedAt)} 時点のデータ（旅行${ledger?.trips ?? 0}件・支出${ledger?.entries ?? 0}件）`
+            : 'まだ取り込んでいません'}
+        </p>
+        <p className="muted small">
+          たびメモの「設定」で「💴 家計簿に送る」を押してから、ここで取り込みます。毎回まるごと入れ替わるので、何度取り込んでも二重にはなりません。旅行の支出を直すときは、たびメモで直してから送り直してください。
+        </p>
+        <LedgerImportButton />
       </section>
 
       {editing && <CategorySheet type={type} category={editing.category} onClose={() => setEditing(null)} />}

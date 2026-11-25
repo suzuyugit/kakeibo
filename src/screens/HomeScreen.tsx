@@ -1,17 +1,21 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import type { Entry } from '../db/types';
+import { db } from '../db/db';
 import { RowList } from '../components/RowList';
+import { formatExportedAt, LedgerImportButton } from '../components/LedgerImport';
 import { useRows, useSettings } from '../hooks/useData';
 import { totalsIn } from '../lib/aggregate';
-import { todayYmd } from '../lib/date';
+import { dayCount, formatMd, todayYmd } from '../lib/date';
 import { yen, signedYen } from '../lib/money';
 import { periodLabel, periodOf } from '../lib/period';
-import { navigate } from '../router';
+import { navigate, tabimemoMoneyUrl } from '../router';
 
 type Props = { onEdit: (e: Entry) => void };
 
 export function HomeScreen({ onEdit }: Props) {
   const settings = useSettings();
   const rows = useRows();
+  const trips = useLiveQuery(() => db.tripLedger.orderBy('startDate').toArray()) ?? [];
   if (!rows) return null;
 
   const today = todayYmd();
@@ -21,6 +25,8 @@ export function HomeScreen({ onEdit }: Props) {
   const budget = settings.monthlyBudget;
   const left = budget !== undefined ? budget - month.expense : undefined;
   const recent = rows.filter((r) => r.date <= today).slice(0, 5);
+  // 次の旅行：旅行中か、これからの旅行でいちばん近いもの
+  const next = trips.find((t) => t.endDate >= today);
 
   return (
     <>
@@ -60,6 +66,41 @@ export function HomeScreen({ onEdit }: Props) {
             <b className={month.balance < 0 ? 'over' : ''}>{signedYen(month.balance)}</b>
           </div>
         </div>
+      </section>
+
+      {next && (
+        <a className="card trip-card" href={tabimemoMoneyUrl(next.tripId)}>
+          <div className="settle-head">
+            <h3 className="card-title">✈️ {next.name}</h3>
+            <b className="trip-days">{next.startDate > today ? `あと${dayCount(today, next.startDate) - 1}日` : '旅行中'}</b>
+          </div>
+          <div className="muted small">
+            {formatMd(next.startDate)}〜{formatMd(next.endDate)}
+          </div>
+          <div className="month-stats">
+            <div>
+              <span className="muted small">予算</span>
+              <b>{next.budgetYen !== undefined ? yen(next.budgetYen) : '―'}</b>
+            </div>
+            <div>
+              <span className="muted small">見積もり</span>
+              <b>{yen(next.estimateYen)}</b>
+            </div>
+            <div>
+              <span className="muted small">もう使った</span>
+              <b>{yen(next.spentYen)}</b>
+            </div>
+          </div>
+          <div className="muted small trip-link">たびメモで開く ›</div>
+        </a>
+      )}
+
+      <section className="card">
+        <div className="settle-head">
+          <h3 className="card-title">たびメモの旅行</h3>
+          <span className="muted small">{settings.ledgerExportedAt ? `${formatExportedAt(settings.ledgerExportedAt)} 時点` : 'まだ取り込んでいません'}</span>
+        </div>
+        <LedgerImportButton className="btn btn-ghost btn-block" />
       </section>
 
       <section className="card">
