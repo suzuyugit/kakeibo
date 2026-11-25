@@ -10,6 +10,10 @@ type Props = {
   tripMonths: Map<string, string[]>;
   past: { date: string; value: number }[];
   marks: { date: string; name: string }[];
+  /** 月の予算（全体）。決めていれば、そこから固定費を引いた額を初期値にする */
+  budget?: number;
+  /** 毎月の固定費の合計 */
+  fixedOut: number;
 };
 
 const SPEND_KEY = 'kakeibo.forecastMonthlySpend';
@@ -36,8 +40,10 @@ function saveSpend(v: number | undefined) {
  * 貯金の見込み：グラフと、スライドして選んだ月の「このままいけば ○円」と内訳。
  * 「1か月に使う額」を変えると、その額で使ったとしたときの見込みに変わる（このカードの中だけ）
  */
-export function SavingsAtMonth({ input: base, tripMonths, past, marks }: Props) {
-  const average = Math.round(base.perDay * 30);
+export function SavingsAtMonth({ input: base, tripMonths, past, marks, budget, fixedOut }: Props) {
+  // 初期値：月の予算 − 固定費（予算がなければ記録からの平均）。固定費は見込みで別に引くので、二重に引かないように除く
+  const recordAverage = Math.round(base.perDay * 30);
+  const average = budget !== undefined ? Math.max(0, budget - fixedOut) : recordAverage;
   const [spend, setSpend] = useState<number | undefined>(loadSpend);
   const [spendText, setSpendText] = useState(() => (spend ?? average).toLocaleString('ja-JP'));
   const input = useMemo(() => (spend !== undefined ? { ...base, perDay: spend / 30 } : base), [base, spend]);
@@ -85,13 +91,14 @@ export function SavingsAtMonth({ input: base, tripMonths, past, marks }: Props) 
           </button>
         </div>
         <span className="muted small">
+          {budget !== undefined ? `月の予算 ${yen(budget)} − 固定費 ${yen(fixedOut)} = ${yen(average)}` : `月の予算を決めていないので、これまでの記録の平均（約 ${yen(recordAverage)}）`}
           {spend === undefined ? (
-            <>記録からの見込み（固定費と旅行を除く）。変えると「これだけ使ったら」の見込みになります。</>
+            <>。変えると「これだけ使ったら」の見込みになります。</>
           ) : (
             <>
-              記録からの見込みは約 {yen(average)}。
+              。
               <button type="button" className="btn-text small" onClick={() => changeSpend(undefined)}>
-                そちらに戻す
+                {budget !== undefined ? '予算の額に戻す' : '記録の平均に戻す'}
               </button>
             </>
           )}

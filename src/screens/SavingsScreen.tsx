@@ -1,6 +1,6 @@
 import { SavingsCard } from '../components/SavingsCard';
 import { SavingsAtMonth } from '../components/SavingsAtMonth';
-import { monthOf } from '../lib/recurring';
+import { isActive, monthOf } from '../lib/recurring';
 import { TripForecastBody } from '../components/TripForecastCard';
 import { removeTrip } from '../components/ledgerActions';
 import { useRows, useSettings } from '../hooks/useData';
@@ -30,8 +30,8 @@ export function SavingsScreen() {
     const m = monthOf(f.ongoing ? fc.today : f.trip.startDate);
     tripMonths.set(m, [...(tripMonths.get(m) ?? []), f.trip.name]);
   }
-  const fixedIn = fc.recurrings.filter((r) => r.type === 'income' && !r.endMonth).reduce((a, r) => a + r.amount, 0);
-  const fixedOut = fc.recurrings.filter((r) => r.type === 'expense' && !r.endMonth).reduce((a, r) => a + r.amount, 0);
+  const fixedIn = fc.recurrings.filter((r) => r.type === 'income' && isActive(r, fc.today)).reduce((a, r) => a + r.amount, 0);
+  const fixedOut = fc.recurrings.filter((r) => r.type === 'expense' && isActive(r, fc.today)).reduce((a, r) => a + r.amount, 0);
 
   return (
     <>
@@ -43,6 +43,8 @@ export function SavingsScreen() {
         tripMonths={tripMonths}
         past={past}
         marks={fc.forecasts.map((f) => ({ date: f.ongoing ? fc.today : f.trip.startDate, name: f.trip.name }))}
+        budget={settings.monthlyBudget}
+        fixedOut={fixedOut}
       />
 
       {/* 予定の旅行があるときだけ、旅行ごとの見込みを出す（たびメモからの取り込みはホームの下と設定にある） */}
