@@ -7,6 +7,8 @@ import { CategorySheet } from '../components/CategorySheet';
 import { RecurringSection } from '../components/RecurringSection';
 import { BudgetSection } from '../components/BudgetSection';
 import { BackupSection } from '../components/BackupSection';
+import { clearExclusions } from '../db/ledgerRepo';
+import { showToast } from '../components/Toast';
 import { formatExportedAt, LedgerImportButton } from '../components/LedgerImport';
 import { useCategories, useSettings } from '../hooks/useData';
 import { todayYmd } from '../lib/date';
@@ -100,6 +102,24 @@ export function SettingsScreen() {
           たびメモの「設定」で「💴 家計簿に送る」を押してから、ここで取り込みます。毎回まるごと入れ替わるので、何度取り込んでも二重にはなりません。旅行の支出を直すときは、たびメモで直してから送り直してください。
         </p>
         <LedgerImportButton />
+        {(settings.excludedTripIds?.length || settings.excludedEntryIds?.length) ? (
+          <div className="excluded">
+            <p className="small">
+              家計簿で削除したもの：旅行 {settings.excludedTripIds?.length ?? 0}件・支出 {settings.excludedEntryIds?.length ?? 0}件（取り込んでも入りません）
+            </p>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              onClick={async () => {
+                if (!confirm('家計簿で削除した旅行と支出を、次の取り込みでまた入るようにしますか？')) return;
+                await clearExclusions();
+                showToast('戻しました。取り込むと入ります');
+              }}
+            >
+              削除したものを戻す
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <BackupSection />

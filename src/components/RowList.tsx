@@ -5,6 +5,7 @@ import { formatMd } from '../lib/date';
 import { yen } from '../lib/money';
 import { useState } from 'react';
 import { TripEntrySheet } from './TripEntrySheet';
+import { removeTripEntry } from './ledgerActions';
 import { SwipeToDelete } from './SwipeToDelete';
 import { showToast } from './Toast';
 
@@ -45,9 +46,11 @@ export function RowList({ rows, onEdit, showDate }: Props) {
         if (r.trip) {
           return (
             <li key={r.key}>
-              <button type="button" className="expense-row" onClick={() => setTripRow(r)}>
-                {body}
-              </button>
+              <SwipeToDelete onDelete={() => removeTripEntry(r.key.replace(/^trip-/, ''))}>
+                <button type="button" className="expense-row" onClick={() => setTripRow(r)}>
+                  {body}
+                </button>
+              </SwipeToDelete>
             </li>
           );
         }

@@ -3221,3 +3221,13 @@ button.card.trip-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+
+.danger-text {
+  color: var(--danger);
+}
+
+.excluded {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}

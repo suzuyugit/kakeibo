@@ -2,6 +2,7 @@ import { SavingsCard } from '../components/SavingsCard';
 import { SavingsChart } from '../components/SavingsChart';
 import { TripForecastBody } from '../components/TripForecastCard';
 import { LedgerImportButton } from '../components/LedgerImport';
+import { removeTrip } from '../components/ledgerActions';
 import { useRows, useSettings } from '../hooks/useData';
 import { useForecast } from '../hooks/useForecast';
 import { yen } from '../lib/money';
@@ -42,6 +43,9 @@ export function SavingsScreen() {
               <b className="trip-days">{f.ongoing ? '旅行中' : `あと${f.daysLeft}日`}</b>
             </div>
             <TripForecastBody f={f} />
+            <button type="button" className="btn-text danger-text small" onClick={() => void removeTrip(f.trip.tripId, f.trip.name)}>
+              この旅行を家計簿から削除
+            </button>
           </section>
         ))
       )}

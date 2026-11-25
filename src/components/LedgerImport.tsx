@@ -16,8 +16,8 @@ export function formatExportedAt(iso: string): string {
 async function importText(text: string): Promise<string | undefined> {
   const p = decodeLedger(text);
   if ('error' in p) return LEDGER_ERROR_MESSAGE[p.error];
-  await importLedger(p);
-  showToast(`旅行${p.trips.length}件・支出${p.entries.length}件を取り込みました`);
+  const n = await importLedger(p);
+  showToast(`旅行${n.trips}件・支出${n.entries}件を取り込みました`);
   return undefined;
 }
 

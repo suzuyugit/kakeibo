@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../db/db';
-import { importLedger } from '../db/ledgerRepo';
+import { clearExclusions, deleteTrip, deleteTripEntry, importLedger, restoreLedger } from '../db/ledgerRepo';
 import { decodeLedger, type LedgerPayload } from './ledger';
 
 // たびメモの「家計簿に送る」が作るのと同じ形
@@ -42,5 +42,27 @@ describe('たびメモからの取り込み', () => {
     expect((await db.tripEntries.toArray()).map((e) => e.id)).toEqual(['e1']);
     expect((await db.settings.get('settings'))!.ledgerExportedAt).toBe('2026-11-21T10:00:00.000Z');
     expect((await db.settings.get('settings'))!.monthStartDay).toBe(1);
+  });
+
+  it('家計簿で消した支出は、次に取り込んでも入らない。使った額からも引く。元に戻せる', async () => {
+    await importLedger(payload);
+    const d = (await deleteTripEntry('e1'))!;
+    expect(await db.tripEntries.count()).toBe(1);
+    expect((await db.tripLedger.get('t1'))!.spentYen).toBe(1333);
+    expect(await importLedger(payload)).toEqual({ trips: 1, entries: 1 });
+    expect((await db.tripLedger.get('t1'))!).toMatchObject({ spentYen: 1333, estimateYen: 13333 });
+    await restoreLedger(d);
+    expect(await db.tripEntries.count()).toBe(2);
+    await importLedger(payload);
+    expect((await db.tripLedger.get('t1'))!.spentYen).toBe(31333);
+  });
+
+  it('家計簿で消した旅行は、支出ごと入らない。戻すと次の取り込みで入る', async () => {
+    await importLedger(payload);
+    await deleteTrip('t1');
+    expect(await db.tripEntries.count()).toBe(0);
+    expect(await importLedger(payload)).toEqual({ trips: 0, entries: 0 });
+    await clearExclusions();
+    expect(await importLedger(payload)).toEqual({ trips: 1, entries: 2 });
   });
 });

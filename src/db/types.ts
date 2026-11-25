@@ -53,6 +53,8 @@ export type Settings = {
   savingsAsOf?: string; // その額がいつの時点の額か（YYYY-MM-DD）
   savingsSetAt?: string; // 貯金を入れた日時（ISO）。入れた日と同じ日の記録は、これより後に記録したものだけ足す
   ledgerExportedAt?: string; // 最後に取り込んだ、たびメモのデータを送った日時
+  excludedTripIds?: string[]; // 家計簿で削除した旅行（次に取り込んでも入れない）
+  excludedEntryIds?: string[]; // 家計簿で削除した旅行の支出（次に取り込んでも入れない）
 };
 
 /** たびメモから取り込んだ旅行（取り込むたびに全部入れ直す） */
