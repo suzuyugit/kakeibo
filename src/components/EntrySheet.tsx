@@ -97,6 +97,36 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
           ))}
         </div>
 
+        <div className="date-row">
+          <label className="date-field">
+            <span aria-hidden="true">📅</span>
+            <input
+              type="date"
+              className="date-input"
+              value={date}
+              max="2100-12-31"
+              onChange={(e) => e.target.value && setDate(e.target.value)}
+              aria-label="日付を選ぶ"
+            />
+          </label>
+          <button
+            type="button"
+            className={`pick ${date === today ? 'active' : ''}`}
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => setDate(today)}
+          >
+            今日
+          </button>
+          <button
+            type="button"
+            className={`pick ${date === yesterday ? 'active' : ''}`}
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => setDate(yesterday)}
+          >
+            昨日
+          </button>
+        </div>
+
         {error && (
           <p className="errors" role="alert">
             {error}
@@ -140,28 +170,6 @@ export function EntrySheet({ entry, initialDate, onClose }: Props) {
             <span className="cat-icon">＋</span>
             <span className="cat-name">追加</span>
           </button>
-        </div>
-
-        <div className="field">
-          <span className="label">日付</span>
-          <div className="chips" role="radiogroup">
-            <button type="button" role="radio" aria-checked={date === today} className={`pick ${date === today ? 'active' : ''}`} onClick={() => setDate(today)}>
-              今日
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={date === yesterday}
-              className={`pick ${date === yesterday ? 'active' : ''}`}
-              onClick={() => setDate(yesterday)}
-            >
-              昨日
-            </button>
-            <label className={`pick date-pick ${date !== today && date !== yesterday ? 'active' : ''}`}>
-              {date !== today && date !== yesterday ? formatMd(date) : '日付を選ぶ'}
-              <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} aria-label="日付を選ぶ" />
-            </label>
-          </div>
         </div>
 
         {type === 'expense' && (

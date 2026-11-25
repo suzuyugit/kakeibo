@@ -7,8 +7,8 @@
   --primary: #15803d;
   --primary-weak: #e8f5ec;
   --income: #15803d;
-  --plus: #dc2626;
-  --minus: #2563eb;
+  --plus: #2563eb;
+  --minus: #dc2626;
   --danger: #c2410c;
   --danger-weak: #fff1ea;
   --ongoing: #0f766e;
@@ -31,8 +31,8 @@
     --primary: #4ade80;
     --primary-weak: #13301d;
     --income: #4ade80;
-    --plus: #f87171;
-    --minus: #60a5fa;
+    --plus: #60a5fa;
+    --minus: #f87171;
     --danger: #fb923c;
     --danger-weak: #3a2216;
     --ongoing: #2dd4bf;
@@ -2686,17 +2686,33 @@ a.expense-row {
   color: var(--income);
 }
 
-.date-pick {
-  position: relative;
-  overflow: hidden;
+/* 記録の日付：いちばん上に、日付の欄（タップでカレンダーが開く）と今日・昨日 */
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.date-pick input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
+.date-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-input {
+  flex: 1;
+  min-width: 0;
   width: 100%;
-  height: 100%;
+  padding: 6px 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.date-row .pick {
+  flex: none;
+  padding: 6px 12px;
 }
 
 /* トーストのボタン（元に戻す） */
@@ -3262,7 +3278,7 @@ button.card.trip-card {
   gap: 4px;
 }
 
-/* カレンダー：収入は「+」赤、支出は「−」青 */
+/* カレンダー：収入は「+」青、支出は「−」赤 */
 .plus,
 .expense-amount.plus {
   color: var(--plus);

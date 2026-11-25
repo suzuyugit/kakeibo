@@ -14,7 +14,7 @@ type Props = {
   onEdit: (e: Entry) => void;
   /** 行に日付も出す（いろいろな日が混ざる一覧） */
   showDate?: boolean;
-  /** 収入を「+」（赤）、支出を「−」（青）で出す（カレンダー） */
+  /** 収入を「+」（青）、支出を「−」（赤）で出す（カレンダー） */
   signColors?: boolean;
 };
 
